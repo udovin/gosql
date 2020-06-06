@@ -1,24 +1,29 @@
 package gosql
 
 import (
-	"fmt"
 	"strings"
 )
 
 // UpdateQuery represents SQL update query.
 type UpdateQuery interface {
 	Query
-	Set(values map[string]interface{}) UpdateQuery
 	Where(where BoolExpr) UpdateQuery
+	Values(values map[string]interface{}) UpdateQuery
 }
 
 type updateQuery struct {
-	table  string
-	values map[string]Value
-	where  BoolExpr
+	builder *builder
+	table   string
+	where   BoolExpr
+	values  map[string]Value
 }
 
-func (q updateQuery) Set(values map[string]interface{}) UpdateQuery {
+func (q updateQuery) Where(where BoolExpr) UpdateQuery {
+	q.where = where
+	return q
+}
+
+func (q updateQuery) Values(values map[string]interface{}) UpdateQuery {
 	q.values = map[string]Value{}
 	for key, val := range values {
 		if _, ok := val.(Value); !ok {
@@ -29,43 +34,44 @@ func (q updateQuery) Set(values map[string]interface{}) UpdateQuery {
 	return q
 }
 
-func (q updateQuery) Where(where BoolExpr) UpdateQuery {
-	q.where = where
-	return q
-}
-
 func (q updateQuery) Build() (string, []interface{}) {
+	var query strings.Builder
 	var opts []interface{}
-	values := q.buildValues(&opts)
-	where := q.buildWhere(&opts)
-	query := fmt.Sprintf(
-		"UPDATE %q SET %s WHERE %s",
-		q.table, values, where,
-	)
-	return query, opts
+	query.WriteString("UPDATE ")
+	query.WriteString(q.builder.buildName(q.table))
+	q.buildSet(&query, &opts)
+	q.buildWhere(&query, &opts)
+	return query.String(), opts
 }
 
-func (q updateQuery) buildValues(opts *[]interface{}) string {
+func (q updateQuery) buildSet(
+	query *strings.Builder, opts *[]interface{},
+) {
 	if len(q.values) == 0 {
-		return ""
+		return
 	}
-	var builder strings.Builder
+	query.WriteString(" SET ")
+	first := true
 	for key, value := range q.values {
-		if builder.Len() > 0 {
-			builder.WriteString(", ")
+		if !first {
+			query.WriteString(", ")
+			first = false
 		}
-		builder.WriteString(fmt.Sprintf("%q", key))
-		builder.WriteString(" = ")
-		builder.WriteString(value.build(opts))
+		query.WriteString(q.builder.buildName(key))
+		query.WriteString(" = ")
+		query.WriteString(value.build(q.builder, opts))
 	}
-	return builder.String()
 }
 
-func (q updateQuery) buildWhere(opts *[]interface{}) string {
+func (q updateQuery) buildWhere(
+	query *strings.Builder, opts *[]interface{},
+) {
+	query.WriteString(" WHERE ")
 	if q.where == nil {
-		return "1"
+		query.WriteRune('1')
+		return
 	}
-	return q.where.build(opts)
+	query.WriteString(q.where.build(q.builder, opts))
 }
 
 func (q updateQuery) String() string {

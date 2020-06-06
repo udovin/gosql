@@ -4,42 +4,34 @@ import (
 	"strings"
 )
 
-// SelectQuery represents SQL select query.
-type SelectQuery interface {
+// DeleteQuery represents SQL delete query.
+type DeleteQuery interface {
 	Query
-	Where(where BoolExpr) SelectQuery
-	Values(values ...Value) SelectQuery
+	Where(where BoolExpr) DeleteQuery
 }
 
-type selectQuery struct {
+type deleteQuery struct {
 	builder *builder
 	table   string
 	where   BoolExpr
 	values  []Value
 }
 
-func (q selectQuery) Where(where BoolExpr) SelectQuery {
+func (q deleteQuery) Where(where BoolExpr) DeleteQuery {
 	q.where = where
 	return q
 }
 
-func (q selectQuery) Values(values ...Value) SelectQuery {
-	q.values = values
-	return q
-}
-
-func (q selectQuery) Build() (string, []interface{}) {
+func (q deleteQuery) Build() (string, []interface{}) {
 	var query strings.Builder
 	var opts []interface{}
-	query.WriteString("SELECT ")
-	q.buildValues(&query, &opts)
-	query.WriteString(" FROM ")
-	query.WriteString(q.builder.buildName(q.table))
+	query.WriteString("DELETE")
+	q.buildFrom(&query, &opts)
 	q.buildWhere(&query, &opts)
 	return query.String(), opts
 }
 
-func (q selectQuery) buildValues(
+func (q deleteQuery) buildValues(
 	query *strings.Builder, opts *[]interface{},
 ) {
 	if len(q.values) == 0 {
@@ -54,7 +46,14 @@ func (q selectQuery) buildValues(
 	}
 }
 
-func (q selectQuery) buildWhere(
+func (q deleteQuery) buildFrom(
+	query *strings.Builder, _ *[]interface{},
+) {
+	query.WriteString(" FROM ")
+	query.WriteString(q.builder.buildName(q.table))
+}
+
+func (q deleteQuery) buildWhere(
 	query *strings.Builder, opts *[]interface{},
 ) {
 	query.WriteString(" WHERE ")
@@ -65,7 +64,7 @@ func (q selectQuery) buildWhere(
 	query.WriteString(q.where.build(q.builder, opts))
 }
 
-func (q selectQuery) String() string {
+func (q deleteQuery) String() string {
 	query, _ := q.Build()
 	return query
 }

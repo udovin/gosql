@@ -6,55 +6,54 @@ import (
 )
 
 // Builder represents SQL query builder.
-type Builder struct {}
-
-// Select creates a new select query.
-func (b *Builder) Select(values... Value) SelectQuery {
-	return selectQuery{values: values}
+type Builder interface {
+	// Select creates a new select query.
+	Select(table string) SelectQuery
+	// Update creates a new update query.
+	Update(table string) UpdateQuery
+	// Delete creates a new delete query.
+	Delete(table string) DeleteQuery
+	// Insert creates a new insert query.
+	Insert(table string) InsertQuery
 }
 
-// Update creates a new update query.
-func (b *Builder) Update(table string) UpdateQuery {
-	return updateQuery{table: table}
-}
-
-// Delete creates a new delete query.
-func (b *Builder) Delete(table string) DeleteQuery {
-	return DeleteQuery{table: table}
-}
-
-// Insert creates a new insert query.
-func (b *Builder) Insert(table string) InsertQuery {
-	return InsertQuery{table: table}
-}
-
+// Query represents SQL query.
 type Query interface {
+	// Build generates SQL query and values.
 	Build() (string, []interface{})
+	// String returns SQL query without values.
 	String() string
 }
 
-// DeleteQuery represents SQL delete query.
-type DeleteQuery struct {
-	table string
-	where BoolExpr
+// NewBuilder creates a new instance of SQL builder.
+func NewBuilder() Builder {
+	return &builder{}
 }
 
-func (q DeleteQuery) Build() (string, []interface{}) {
-	query := fmt.Sprintf(
-		"DELETE FROM %q WHERE %s",
-		q.table,
-		"",
-	)
-	return query, nil
+type builder struct{}
+
+func (b *builder) Select(table string) SelectQuery {
+	return selectQuery{builder: b, table: table}
 }
 
-func (q DeleteQuery) String() string {
-	query, _ := q.Build()
-	return query
+func (b *builder) Update(table string) UpdateQuery {
+	return updateQuery{builder: b, table: table}
 }
 
-type InsertQuery struct {
-	table string
+func (b *builder) Delete(table string) DeleteQuery {
+	return deleteQuery{builder: b, table: table}
+}
+
+func (b *builder) Insert(table string) InsertQuery {
+	return insertQuery{builder: b, table: table}
+}
+
+func (b *builder) buildName(name string) string {
+	return fmt.Sprintf("%q", name)
+}
+
+func (b *builder) buildOpt(n int) string {
+	return fmt.Sprintf("$%d", n)
 }
 
 type state struct {
@@ -64,7 +63,7 @@ type state struct {
 type BoolExpr interface {
 	And(BoolExpr) BoolExpr
 	Or(BoolExpr) BoolExpr
-	build(*[]interface{}) string
+	build(*builder, *[]interface{}) string
 }
 
 type exprKind int
@@ -87,9 +86,9 @@ func (e binaryExpr) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: e, rhs: o}
 }
 
-func (e binaryExpr) build(opts *[]interface{}) string {
+func (e binaryExpr) build(b *builder, opts *[]interface{}) string {
 	var builder strings.Builder
-	builder.WriteString(e.lhs.build(opts))
+	builder.WriteString(e.lhs.build(b, opts))
 	switch e.kind {
 	case orExpr:
 		builder.WriteString(" OR ")
@@ -98,7 +97,7 @@ func (e binaryExpr) build(opts *[]interface{}) string {
 	default:
 		panic(fmt.Errorf("unsupported binaryExpr %q", e.kind))
 	}
-	builder.WriteString(e.rhs.build(opts))
+	builder.WriteString(e.rhs.build(b, opts))
 	return builder.String()
 }
 
@@ -109,7 +108,7 @@ type Value interface {
 	Greater(interface{}) BoolExpr
 	LessEqual(interface{}) BoolExpr
 	GreaterEqual(interface{}) BoolExpr
-	build(*[]interface{}) string
+	build(*builder, *[]interface{}) string
 }
 
 type Column string
@@ -156,8 +155,8 @@ func (c Column) GreaterEqual(o interface{}) BoolExpr {
 	return cmp{kind: greaterEqualCmp, lhs: c, rhs: o.(Value)}
 }
 
-func (c Column) build(*[]interface{}) string {
-	return fmt.Sprintf("%q", c)
+func (c Column) build(b *builder, _ *[]interface{}) string {
+	return b.buildName(string(c))
 }
 
 type value struct {
@@ -178,9 +177,9 @@ func (v value) NotEqual(o interface{}) BoolExpr {
 	return cmp{kind: notEqCmp, lhs: v, rhs: o.(Value)}
 }
 
-func (v value) build(opts *[]interface{}) string {
+func (v value) build(b *builder, opts *[]interface{}) string {
 	*opts = append(*opts, v.value)
-	return fmt.Sprintf("$%d", len(*opts))
+	return b.buildOpt(len(*opts))
 }
 
 func (v value) Less(o interface{}) BoolExpr {
@@ -223,7 +222,7 @@ const (
 )
 
 type cmp struct {
-	kind cmpKind
+	kind     cmpKind
 	lhs, rhs Value
 }
 
@@ -235,9 +234,9 @@ func (c cmp) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: c, rhs: o}
 }
 
-func (c cmp) build(opts *[]interface{}) string {
+func (c cmp) build(b *builder, opts *[]interface{}) string {
 	var builder strings.Builder
-	builder.WriteString(c.lhs.build(opts))
+	builder.WriteString(c.lhs.build(b, opts))
 	switch c.kind {
 	case eqCmp:
 		if val, ok := c.rhs.(value); ok && val.value == nil {
@@ -262,6 +261,6 @@ func (c cmp) build(opts *[]interface{}) string {
 	default:
 		panic(fmt.Errorf("unsupported binaryExpr %q", c.kind))
 	}
-	builder.WriteString(c.rhs.build(opts))
+	builder.WriteString(c.rhs.build(b, opts))
 	return builder.String()
 }
