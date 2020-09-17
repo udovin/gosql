@@ -13,16 +13,18 @@ type InsertQuery interface {
 type insertQuery struct {
 	builder *builder
 	table   string
-	values  map[string]Value
+	names   []string
+	values  []Value
 }
 
 func (q insertQuery) Values(values map[string]interface{}) InsertQuery {
-	q.values = map[string]Value{}
-	for key, val := range values {
+	q.names, q.values = nil, nil
+	for name, val := range values {
 		if _, ok := val.(Value); !ok {
 			val = value{value: val}
 		}
-		q.values[key] = val.(Value)
+		q.names = append(q.names, name)
+		q.values = append(q.values, val.(Value))
 	}
 	return q
 }
@@ -39,21 +41,18 @@ func (q insertQuery) Build() (string, []interface{}) {
 func (q insertQuery) buildInsert(
 	query *strings.Builder, opts *[]interface{},
 ) {
-	var names []string
-	var values []Value
-	for name, value := range q.values {
-		names = append(names, name)
-		values = append(values, value)
+	if len(q.names) != len(q.values) {
+		panic("amount of names and values differs")
 	}
 	query.WriteString(" (")
-	for i, name := range names {
+	for i, name := range q.names {
 		if i > 0 {
 			query.WriteString(", ")
 		}
 		query.WriteString(q.builder.buildName(name))
 	}
 	query.WriteString(") VALUES (")
-	for i, value := range values {
+	for i, value := range q.values {
 		if i > 0 {
 			query.WriteString(", ")
 		}

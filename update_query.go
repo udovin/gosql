@@ -15,7 +15,8 @@ type updateQuery struct {
 	builder *builder
 	table   string
 	where   BoolExpr
-	values  map[string]Value
+	names   []string
+	values  []Value
 }
 
 func (q updateQuery) Where(where BoolExpr) UpdateQuery {
@@ -24,12 +25,13 @@ func (q updateQuery) Where(where BoolExpr) UpdateQuery {
 }
 
 func (q updateQuery) Values(values map[string]interface{}) UpdateQuery {
-	q.values = map[string]Value{}
-	for key, val := range values {
+	q.names, q.values = nil, nil
+	for name, val := range values {
 		if _, ok := val.(Value); !ok {
 			val = value{value: val}
 		}
-		q.values[key] = val.(Value)
+		q.names = append(q.names, name)
+		q.values = append(q.values, val.(Value))
 	}
 	return q
 }
@@ -50,16 +52,19 @@ func (q updateQuery) buildSet(
 	if len(q.values) == 0 {
 		return
 	}
+	if len(q.names) != len(q.values) {
+		panic("amount of names and values differs")
+	}
 	query.WriteString(" SET ")
 	first := true
-	for key, value := range q.values {
+	for i := range q.names {
 		if !first {
 			query.WriteString(", ")
 			first = false
 		}
-		query.WriteString(q.builder.buildName(key))
+		query.WriteString(q.builder.buildName(q.names[i]))
 		query.WriteString(" = ")
-		query.WriteString(value.build(q.builder, opts))
+		query.WriteString(q.values[i].build(q.builder, opts))
 	}
 }
 
