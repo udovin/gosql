@@ -40,8 +40,7 @@ func TestSelectQuery(t *testing.T) {
 func TestUpdateQuery(t *testing.T) {
 	b := NewBuilder()
 	q1 := b.Update("t1").
-		Where(Column("c1").Equal(123)).
-		Values(map[string]interface{}{"c2": "test"})
+		Where(Column("c1").Equal(123)).Names("c2").Values("test")
 	s1 := `UPDATE "t1" SET "c2" = $1 WHERE "c1" = $2`
 	v1 := []interface{}{"test", 123}
 	if s := q1.String(); s != s1 {
@@ -64,8 +63,7 @@ func TestDeleteQuery(t *testing.T) {
 
 func TestInsertQuery(t *testing.T) {
 	b := NewBuilder()
-	q1 := b.Insert("t1").
-		Values(map[string]interface{}{"c2": "test"})
+	q1 := b.Insert("t1").Names("c2").Values("test")
 	s1 := `INSERT INTO "t1" ("c2") VALUES ($1)`
 	if s := q1.String(); s != s1 {
 		t.Fatalf("Expected %q got %q", s1, s)

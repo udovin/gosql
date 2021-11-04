@@ -56,14 +56,33 @@ func (b *builder) buildOpt(n int) string {
 	return fmt.Sprintf("$%d", n)
 }
 
-type state struct {
-	values []interface{}
+type BuildState interface {
+	Builder() *builder
+	Values() []interface{}
+	AddValue(value interface{})
+}
+
+type buildState struct {
+	builder *builder
+	values  []interface{}
+}
+
+func (s buildState) Builder() *builder {
+	return s.builder
+}
+
+func (s buildState) Values() []interface{} {
+	return s.values
+}
+
+func (s *buildState) AddValue(value interface{}) {
+	s.values = append(s.values, value)
 }
 
 type BoolExpr interface {
 	And(BoolExpr) BoolExpr
 	Or(BoolExpr) BoolExpr
-	build(*builder, *[]interface{}) string
+	Build(BuildState) string
 }
 
 type exprKind int
@@ -86,18 +105,18 @@ func (e binaryExpr) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: e, rhs: o}
 }
 
-func (e binaryExpr) build(b *builder, opts *[]interface{}) string {
+func (e binaryExpr) Build(state BuildState) string {
 	var builder strings.Builder
-	builder.WriteString(e.lhs.build(b, opts))
+	builder.WriteString(e.lhs.Build(state))
 	switch e.kind {
 	case orExpr:
 		builder.WriteString(" OR ")
 	case andExpr:
 		builder.WriteString(" AND ")
 	default:
-		panic(fmt.Errorf("unsupported binaryExpr %q", e.kind))
+		panic(fmt.Errorf("unsupported binary expr %q", e.kind))
 	}
-	builder.WriteString(e.rhs.build(b, opts))
+	builder.WriteString(e.rhs.Build(state))
 	return builder.String()
 }
 
@@ -108,55 +127,37 @@ type Value interface {
 	Greater(interface{}) BoolExpr
 	LessEqual(interface{}) BoolExpr
 	GreaterEqual(interface{}) BoolExpr
-	build(*builder, *[]interface{}) string
+	Build(BuildState) string
 }
 
 type Column string
 
 func (c Column) Equal(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: eqCmp, lhs: c, rhs: o.(Value)}
+	return cmp{kind: eqCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 func (c Column) NotEqual(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: notEqCmp, lhs: c, rhs: o.(Value)}
+	return cmp{kind: notEqCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 func (c Column) Less(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: lessCmp, lhs: c, rhs: o.(Value)}
+	return cmp{kind: lessCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 func (c Column) Greater(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: greaterCmp, lhs: c, rhs: o.(Value)}
+	return cmp{kind: greaterCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 func (c Column) LessEqual(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: lessEqualCmp, lhs: c, rhs: o.(Value)}
+	return cmp{kind: lessEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 func (c Column) GreaterEqual(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: greaterEqualCmp, lhs: c, rhs: o.(Value)}
+	return cmp{kind: greaterEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) build(b *builder, _ *[]interface{}) string {
-	return b.buildName(string(c))
+func (c Column) Build(state BuildState) string {
+	return state.Builder().buildName(string(c))
 }
 
 type value struct {
@@ -164,50 +165,32 @@ type value struct {
 }
 
 func (v value) Equal(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: eqCmp, lhs: v, rhs: o.(Value)}
+	return cmp{kind: eqCmp, lhs: v, rhs: wrapValue(o)}
 }
 
 func (v value) NotEqual(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: notEqCmp, lhs: v, rhs: o.(Value)}
-}
-
-func (v value) build(b *builder, opts *[]interface{}) string {
-	*opts = append(*opts, v.value)
-	return b.buildOpt(len(*opts))
+	return cmp{kind: notEqCmp, lhs: v, rhs: wrapValue(o)}
 }
 
 func (v value) Less(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: lessCmp, lhs: v, rhs: o.(Value)}
+	return cmp{kind: lessCmp, lhs: v, rhs: wrapValue(o)}
 }
 
 func (v value) Greater(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: greaterCmp, lhs: v, rhs: o.(Value)}
+	return cmp{kind: greaterCmp, lhs: v, rhs: wrapValue(o)}
 }
 
 func (v value) LessEqual(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: lessEqualCmp, lhs: v, rhs: o.(Value)}
+	return cmp{kind: lessEqualCmp, lhs: v, rhs: wrapValue(o)}
 }
 
 func (v value) GreaterEqual(o interface{}) BoolExpr {
-	if _, ok := o.(Value); !ok {
-		o = value{value: o}
-	}
-	return cmp{kind: greaterEqualCmp, lhs: v, rhs: o.(Value)}
+	return cmp{kind: greaterEqualCmp, lhs: v, rhs: wrapValue(o)}
+}
+
+func (v value) Build(state BuildState) string {
+	state.AddValue(v.value)
+	return state.Builder().buildOpt(len(state.Values()))
 }
 
 type cmpKind int
@@ -234,18 +217,18 @@ func (c cmp) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: c, rhs: o}
 }
 
-func (c cmp) build(b *builder, opts *[]interface{}) string {
+func (c cmp) Build(state BuildState) string {
 	var builder strings.Builder
-	builder.WriteString(c.lhs.build(b, opts))
+	builder.WriteString(c.lhs.Build(state))
 	switch c.kind {
 	case eqCmp:
-		if val, ok := c.rhs.(value); ok && val.value == nil {
+		if isNullValue(c.rhs) {
 			builder.WriteString(" IS NULL")
 			return builder.String()
 		}
 		builder.WriteString(" = ")
 	case notEqCmp:
-		if val, ok := c.rhs.(value); ok && val.value == nil {
+		if isNullValue(c.rhs) {
 			builder.WriteString(" IS NOT NULL")
 			return builder.String()
 		}
@@ -261,6 +244,18 @@ func (c cmp) build(b *builder, opts *[]interface{}) string {
 	default:
 		panic(fmt.Errorf("unsupported binaryExpr %q", c.kind))
 	}
-	builder.WriteString(c.rhs.build(b, opts))
+	builder.WriteString(c.rhs.Build(state))
 	return builder.String()
+}
+
+func wrapValue(val interface{}) Value {
+	if v, ok := val.(Value); ok {
+		return v
+	}
+	return value{value: val}
+}
+
+func isNullValue(val Value) bool {
+	v, ok := val.(value)
+	return ok && v.value == nil
 }

@@ -30,17 +30,17 @@ func (q selectQuery) Values(values ...Value) SelectQuery {
 
 func (q selectQuery) Build() (string, []interface{}) {
 	var query strings.Builder
-	var opts []interface{}
+	state := buildState{builder: q.builder}
 	query.WriteString("SELECT ")
-	q.buildValues(&query, &opts)
+	q.buildValues(&query, &state)
 	query.WriteString(" FROM ")
 	query.WriteString(q.builder.buildName(q.table))
-	q.buildWhere(&query, &opts)
-	return query.String(), opts
+	q.buildWhere(&query, &state)
+	return query.String(), state.Values()
 }
 
 func (q selectQuery) buildValues(
-	query *strings.Builder, opts *[]interface{},
+	query *strings.Builder, state *buildState,
 ) {
 	if len(q.values) == 0 {
 		query.WriteRune('*')
@@ -50,19 +50,19 @@ func (q selectQuery) buildValues(
 		if i > 0 {
 			query.WriteString(", ")
 		}
-		query.WriteString(value.build(q.builder, opts))
+		query.WriteString(value.Build(state))
 	}
 }
 
 func (q selectQuery) buildWhere(
-	query *strings.Builder, opts *[]interface{},
+	query *strings.Builder, state *buildState,
 ) {
 	query.WriteString(" WHERE ")
 	if q.where == nil {
 		query.WriteRune('1')
 		return
 	}
-	query.WriteString(q.where.build(q.builder, opts))
+	query.WriteString(q.where.Build(state))
 }
 
 func (q selectQuery) String() string {

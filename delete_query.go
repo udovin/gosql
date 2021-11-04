@@ -14,7 +14,6 @@ type deleteQuery struct {
 	builder *builder
 	table   string
 	where   BoolExpr
-	values  []Value
 }
 
 func (q deleteQuery) Where(where BoolExpr) DeleteQuery {
@@ -24,44 +23,29 @@ func (q deleteQuery) Where(where BoolExpr) DeleteQuery {
 
 func (q deleteQuery) Build() (string, []interface{}) {
 	var query strings.Builder
-	var opts []interface{}
+	state := buildState{builder: q.builder}
 	query.WriteString("DELETE")
-	q.buildFrom(&query, &opts)
-	q.buildWhere(&query, &opts)
-	return query.String(), opts
-}
-
-func (q deleteQuery) buildValues(
-	query *strings.Builder, opts *[]interface{},
-) {
-	if len(q.values) == 0 {
-		query.WriteRune('*')
-		return
-	}
-	for i, value := range q.values {
-		if i > 0 {
-			query.WriteString(", ")
-		}
-		query.WriteString(value.build(q.builder, opts))
-	}
+	q.buildFrom(&query, &state)
+	q.buildWhere(&query, &state)
+	return query.String(), state.Values()
 }
 
 func (q deleteQuery) buildFrom(
-	query *strings.Builder, _ *[]interface{},
+	query *strings.Builder, state *buildState,
 ) {
 	query.WriteString(" FROM ")
 	query.WriteString(q.builder.buildName(q.table))
 }
 
 func (q deleteQuery) buildWhere(
-	query *strings.Builder, opts *[]interface{},
+	query *strings.Builder, state *buildState,
 ) {
 	query.WriteString(" WHERE ")
 	if q.where == nil {
 		query.WriteRune('1')
 		return
 	}
-	query.WriteString(q.where.build(q.builder, opts))
+	query.WriteString(q.where.Build(state))
 }
 
 func (q deleteQuery) String() string {

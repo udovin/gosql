@@ -7,7 +7,8 @@ import (
 // InsertQuery represents SQL insert query.
 type InsertQuery interface {
 	Query
-	Values(values map[string]interface{}) InsertQuery
+	Names(name ...string) InsertQuery
+	Values(values ...interface{}) InsertQuery
 }
 
 type insertQuery struct {
@@ -17,29 +18,30 @@ type insertQuery struct {
 	values  []Value
 }
 
-func (q insertQuery) Values(values map[string]interface{}) InsertQuery {
-	q.names, q.values = nil, nil
-	for name, val := range values {
-		if _, ok := val.(Value); !ok {
-			val = value{value: val}
-		}
-		q.names = append(q.names, name)
-		q.values = append(q.values, val.(Value))
+func (q insertQuery) Names(names ...string) InsertQuery {
+	q.names = names
+	return q
+}
+
+func (q insertQuery) Values(values ...interface{}) InsertQuery {
+	q.values = nil
+	for _, val := range values {
+		q.values = append(q.values, wrapValue(val))
 	}
 	return q
 }
 
 func (q insertQuery) Build() (string, []interface{}) {
 	var query strings.Builder
-	var opts []interface{}
+	state := buildState{builder: q.builder}
 	query.WriteString("INSERT INTO ")
 	query.WriteString(q.builder.buildName(q.table))
-	q.buildInsert(&query, &opts)
-	return query.String(), opts
+	q.buildInsert(&query, &state)
+	return query.String(), state.Values()
 }
 
 func (q insertQuery) buildInsert(
-	query *strings.Builder, opts *[]interface{},
+	query *strings.Builder, state *buildState,
 ) {
 	if len(q.names) != len(q.values) {
 		panic("amount of names and values differs")
@@ -56,7 +58,7 @@ func (q insertQuery) buildInsert(
 		if i > 0 {
 			query.WriteString(", ")
 		}
-		query.WriteString(value.build(q.builder, opts))
+		query.WriteString(value.Build(state))
 	}
 	query.WriteRune(')')
 }

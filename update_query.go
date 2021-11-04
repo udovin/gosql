@@ -8,7 +8,8 @@ import (
 type UpdateQuery interface {
 	Query
 	Where(where BoolExpr) UpdateQuery
-	Values(values map[string]interface{}) UpdateQuery
+	Names(names ...string) UpdateQuery
+	Values(values ...interface{}) UpdateQuery
 }
 
 type updateQuery struct {
@@ -24,30 +25,31 @@ func (q updateQuery) Where(where BoolExpr) UpdateQuery {
 	return q
 }
 
-func (q updateQuery) Values(values map[string]interface{}) UpdateQuery {
-	q.names, q.values = nil, nil
-	for name, val := range values {
-		if _, ok := val.(Value); !ok {
-			val = value{value: val}
-		}
-		q.names = append(q.names, name)
-		q.values = append(q.values, val.(Value))
+func (q updateQuery) Names(names ...string) UpdateQuery {
+	q.names = names
+	return q
+}
+
+func (q updateQuery) Values(values ...interface{}) UpdateQuery {
+	q.values = nil
+	for _, val := range values {
+		q.values = append(q.values, wrapValue(val))
 	}
 	return q
 }
 
 func (q updateQuery) Build() (string, []interface{}) {
 	var query strings.Builder
-	var opts []interface{}
+	state := buildState{builder: q.builder}
 	query.WriteString("UPDATE ")
 	query.WriteString(q.builder.buildName(q.table))
-	q.buildSet(&query, &opts)
-	q.buildWhere(&query, &opts)
-	return query.String(), opts
+	q.buildSet(&query, &state)
+	q.buildWhere(&query, &state)
+	return query.String(), state.Values()
 }
 
 func (q updateQuery) buildSet(
-	query *strings.Builder, opts *[]interface{},
+	query *strings.Builder, state *buildState,
 ) {
 	if len(q.values) == 0 {
 		return
@@ -64,19 +66,19 @@ func (q updateQuery) buildSet(
 		}
 		query.WriteString(q.builder.buildName(q.names[i]))
 		query.WriteString(" = ")
-		query.WriteString(q.values[i].build(q.builder, opts))
+		query.WriteString(q.values[i].Build(state))
 	}
 }
 
 func (q updateQuery) buildWhere(
-	query *strings.Builder, opts *[]interface{},
+	query *strings.Builder, state *buildState,
 ) {
 	query.WriteString(" WHERE ")
 	if q.where == nil {
 		query.WriteRune('1')
 		return
 	}
-	query.WriteString(q.where.build(q.builder, opts))
+	query.WriteString(q.where.Build(state))
 }
 
 func (q updateQuery) String() string {
