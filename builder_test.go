@@ -79,6 +79,11 @@ func TestDeleteQuery(t *testing.T) {
 	if s := q1.String(); s != s1 {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
+	q2 := b.Delete("t2")
+	s2 := `DELETE FROM "t2" WHERE 1`
+	if s := q2.String(); s != s2 {
+		t.Fatalf("Expected %q got %q", s2, s)
+	}
 }
 
 func TestInsertQuery(t *testing.T) {

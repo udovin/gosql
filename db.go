@@ -24,6 +24,7 @@ type TxBeginner interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
+// WithTx represents wrapper for code that should use transaction.
 func WithTx(b TxBeginner, fn func(tx *sql.Tx) error) error {
 	tx, err := b.BeginTx(context.Background(), nil)
 	if err != nil {
@@ -38,11 +39,11 @@ func WithTx(b TxBeginner, fn func(tx *sql.Tx) error) error {
 	}()
 	if err := fn(tx); err != nil {
 		return tx.Rollback()
-	} else {
-		return tx.Commit()
 	}
+	return tx.Commit()
 }
 
+// WithEnsuredTx ensures that code uses sql.Tx.
 func WithEnsuredTx(tx WeakTx, fn func(tx *sql.Tx) error) error {
 	switch v := tx.(type) {
 	case *sql.Tx:
