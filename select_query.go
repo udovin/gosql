@@ -7,24 +7,24 @@ import (
 // SelectQuery represents SQL select query.
 type SelectQuery interface {
 	Query
+	Names(names ...string) SelectQuery
 	Where(where BoolExpr) SelectQuery
-	Values(values ...Value) SelectQuery
 }
 
 type selectQuery struct {
 	builder *builder
 	table   string
+	names   []string
 	where   BoolExpr
-	values  []Value
+}
+
+func (q selectQuery) Names(names ...string) SelectQuery {
+	q.names = names
+	return q
 }
 
 func (q selectQuery) Where(where BoolExpr) SelectQuery {
 	q.where = where
-	return q
-}
-
-func (q selectQuery) Values(values ...Value) SelectQuery {
-	q.values = values
 	return q
 }
 
@@ -42,15 +42,15 @@ func (q selectQuery) Build() (string, []interface{}) {
 func (q selectQuery) buildValues(
 	query *strings.Builder, state *buildState,
 ) {
-	if len(q.values) == 0 {
+	if len(q.names) == 0 {
 		query.WriteRune('*')
 		return
 	}
-	for i, value := range q.values {
+	for i, name := range q.names {
 		if i > 0 {
 			query.WriteString(", ")
 		}
-		query.WriteString(value.Build(state))
+		query.WriteString(q.builder.buildName(name))
 	}
 }
 

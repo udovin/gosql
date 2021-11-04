@@ -9,6 +9,7 @@ func TestSelectQuery(t *testing.T) {
 	b := NewBuilder()
 	inputs := []SelectQuery{
 		b.Select("t1"),
+		b.Select("t1").Names("c1", "c2", "c3"),
 		b.Select("t1").Where(Column("c1").Equal(123)),
 		b.Select("t1").Where(Column("c1").NotEqual(123)),
 		b.Select("t1").Where(Column("c2").Equal(nil)),
@@ -22,6 +23,7 @@ func TestSelectQuery(t *testing.T) {
 	}
 	outputs := []string{
 		`SELECT * FROM "t1" WHERE 1`,
+		`SELECT "c1", "c2", "c3" FROM "t1" WHERE 1`,
 		`SELECT * FROM "t1" WHERE "c1" = $1`,
 		`SELECT * FROM "t1" WHERE "c1" <> $1`,
 		`SELECT * FROM "t1" WHERE "c2" IS NULL`,
@@ -48,12 +50,25 @@ func TestUpdateQuery(t *testing.T) {
 		Names("c2", "c3").Values("test", "test2")
 	s1 := `UPDATE "t1" SET "c2" = $1, "c3" = $2 WHERE "c1" = $3`
 	v1 := []interface{}{"test", "test2", 123}
-	if s := q1.String(); s != s1 {
-		t.Fatalf("Expected %q got %q", s1, s)
-	}
 	if s, v := q1.Build(); s != s1 || !reflect.DeepEqual(v, v1) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
+	if s := q1.String(); s != s1 {
+		t.Fatalf("Expected %q got %q", s1, s)
+	}
+	q2 := b.Update("t2").
+		Names("c1", "c2").Values("test", "test2")
+	s2 := `UPDATE "t2" SET "c1" = $1, "c2" = $2 WHERE 1`
+	v2 := []interface{}{"test", "test2"}
+	if s, v := q2.Build(); s != s2 || !reflect.DeepEqual(v, v2) {
+		t.Fatalf("Expected %q got %q", s2, s)
+	}
+	testExpectPanic(t, func() {
+		b.Update("t1").Names("c2", "c3").Values("test").Build()
+	})
+	testExpectPanic(t, func() {
+		b.Update("t1").Build()
+	})
 }
 
 func TestDeleteQuery(t *testing.T) {
@@ -71,10 +86,25 @@ func TestInsertQuery(t *testing.T) {
 	q1 := b.Insert("t1").Names("c2", "c3").Values("test", "test2")
 	s1 := `INSERT INTO "t1" ("c2", "c3") VALUES ($1, $2)`
 	v1 := []interface{}{"test", "test2"}
-	if s := q1.String(); s != s1 {
-		t.Fatalf("Expected %q got %q", s1, s)
-	}
 	if s, v := q1.Build(); s != s1 || !reflect.DeepEqual(v, v1) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
+	if s := q1.String(); s != s1 {
+		t.Fatalf("Expected %q got %q", s1, s)
+	}
+	testExpectPanic(t, func() {
+		b.Insert("t1").Names("c2", "c3").Values("test").Build()
+	})
+	testExpectPanic(t, func() {
+		b.Insert("t1").Build()
+	})
+}
+
+func testExpectPanic(tb testing.TB, fn func()) {
+	defer func() {
+		if r := recover(); r == nil {
+			tb.Fatalf("Expected panic")
+		}
+	}()
+	fn()
 }

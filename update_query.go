@@ -51,8 +51,8 @@ func (q updateQuery) Build() (string, []interface{}) {
 func (q updateQuery) buildSet(
 	query *strings.Builder, state *buildState,
 ) {
-	if len(q.values) == 0 {
-		return
+	if len(q.names) == 0 {
+		panic("list of names can not be empty")
 	}
 	if len(q.names) != len(q.values) {
 		panic("amount of names and values differs")

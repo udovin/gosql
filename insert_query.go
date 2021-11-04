@@ -43,6 +43,9 @@ func (q insertQuery) Build() (string, []interface{}) {
 func (q insertQuery) buildInsert(
 	query *strings.Builder, state *buildState,
 ) {
+	if len(q.names) == 0 {
+		panic("list of names can not be empty")
+	}
 	if len(q.names) != len(q.values) {
 		panic("amount of names and values differs")
 	}
