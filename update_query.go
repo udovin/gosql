@@ -58,11 +58,9 @@ func (q updateQuery) buildSet(
 		panic("amount of names and values differs")
 	}
 	query.WriteString(" SET ")
-	first := true
 	for i := range q.names {
-		if !first {
+		if i > 0 {
 			query.WriteString(", ")
-			first = false
 		}
 		query.WriteString(q.builder.buildName(q.names[i]))
 		query.WriteString(" = ")
