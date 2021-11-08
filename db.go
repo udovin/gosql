@@ -68,6 +68,14 @@ type DB struct {
 	Builder
 }
 
+// BeginTx starts new transaction.
+func (d *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	if opts != nil && opts.ReadOnly {
+		return d.RO.BeginTx(ctx, opts)
+	}
+	return d.DB.BeginTx(ctx, opts)
+}
+
 // Test *DB for interfaces.
 var (
 	_ WeakTx     = &DB{}

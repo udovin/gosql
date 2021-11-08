@@ -6,7 +6,7 @@ import (
 )
 
 func TestSelectQuery(t *testing.T) {
-	b := NewBuilder()
+	b := NewBuilder(SQLiteDialect)
 	inputs := []SelectQuery{
 		b.Select("t1"),
 		b.Select("t1").Names("c1", "c2", "c3"),
@@ -48,7 +48,7 @@ func TestSelectQuery(t *testing.T) {
 }
 
 func TestUpdateQuery(t *testing.T) {
-	b := NewBuilder()
+	b := NewBuilder(SQLiteDialect)
 	q1 := b.Update("t1").
 		Where(Column("c1").Equal(123)).
 		Names("c2", "c3").Values("test", "test2")
@@ -76,7 +76,7 @@ func TestUpdateQuery(t *testing.T) {
 }
 
 func TestDeleteQuery(t *testing.T) {
-	b := NewBuilder()
+	b := NewBuilder(SQLiteDialect)
 	q1 := b.Delete("t1").
 		Where(Column("c1").Equal(123))
 	s1 := `DELETE FROM "t1" WHERE "c1" = $1`
@@ -91,7 +91,7 @@ func TestDeleteQuery(t *testing.T) {
 }
 
 func TestInsertQuery(t *testing.T) {
-	b := NewBuilder()
+	b := NewBuilder(SQLiteDialect)
 	q1 := b.Insert("t1").Names("c2", "c3").Values("test", "test2")
 	s1 := `INSERT INTO "t1" ("c2", "c3") VALUES ($1, $2)`
 	v1 := []interface{}{"test", "test2"}

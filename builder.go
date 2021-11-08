@@ -7,6 +7,8 @@ import (
 
 // Builder represents SQL query builder.
 type Builder interface {
+	// Dialect returns SQL dialect.
+	Dialect() Dialect
 	// Select creates a new select query.
 	Select(table string) SelectQuery
 	// Update creates a new update query.
@@ -25,12 +27,25 @@ type Query interface {
 	String() string
 }
 
+type Dialect int
+
+const (
+	SQLiteDialect   Dialect = iota
+	PostgresDialect Dialect
+)
+
 // NewBuilder creates a new instance of SQL builder.
-func NewBuilder() Builder {
-	return &builder{}
+func NewBuilder(dialect Dialect) Builder {
+	return &builder{dialect: dialect}
 }
 
-type builder struct{}
+type builder struct {
+	dialect Dialect
+}
+
+func (b builder) Dialect() Dialect {
+	return b.dialect
+}
 
 func (b *builder) Select(table string) SelectQuery {
 	return selectQuery{builder: b, table: table}
