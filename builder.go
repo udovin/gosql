@@ -30,8 +30,8 @@ type Query interface {
 type Dialect int
 
 const (
-	SQLiteDialect   Dialect = iota
-	PostgresDialect Dialect
+	SQLiteDialect Dialect = iota
+	PostgresDialect
 )
 
 // NewBuilder creates a new instance of SQL builder.
