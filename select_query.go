@@ -5,7 +5,7 @@ type SelectQuery interface {
 	Query
 	Names(names ...string) SelectQuery
 	Where(where BoolExpr) SelectQuery
-	OrderBy(names ...string) SelectQuery
+	OrderBy(names ...interface{}) SelectQuery
 }
 
 type selectQuery struct {
@@ -13,7 +13,7 @@ type selectQuery struct {
 	table   string
 	names   []string
 	where   BoolExpr
-	orderBy []string
+	orderBy []Expr
 }
 
 func (q selectQuery) Names(names ...string) SelectQuery {
@@ -26,22 +26,26 @@ func (q selectQuery) Where(where BoolExpr) SelectQuery {
 	return q
 }
 
-func (q selectQuery) OrderBy(names ...string) SelectQuery {
-	q.orderBy = names
+func (q selectQuery) OrderBy(names ...interface{}) SelectQuery {
+	q.orderBy = nil
+	for _, name := range names {
+		q.orderBy = append(q.orderBy, wrapOrderExpr(name))
+	}
 	return q
 }
 
 func (q selectQuery) Build() (string, []interface{}) {
 	builder := rawBuilder{builder: q.builder}
 	builder.WriteString("SELECT ")
-	q.buildValues(&builder)
+	q.buildNames(&builder)
 	builder.WriteString(" FROM ")
 	builder.WriteString(q.builder.buildName(q.table))
 	q.buildWhere(&builder)
+	q.buildOrderBy(&builder)
 	return builder.String(), builder.Values()
 }
 
-func (q selectQuery) buildValues(builder *rawBuilder) {
+func (q selectQuery) buildNames(builder *rawBuilder) {
 	if len(q.names) == 0 {
 		builder.WriteRune('*')
 		return
@@ -61,6 +65,19 @@ func (q selectQuery) buildWhere(builder *rawBuilder) {
 		return
 	}
 	q.where.Build(builder)
+}
+
+func (q selectQuery) buildOrderBy(builder *rawBuilder) {
+	if len(q.orderBy) == 0 {
+		return
+	}
+	builder.WriteString(" ORDER BY ")
+	for i, name := range q.orderBy {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		name.Build(builder)
+	}
 }
 
 func (q selectQuery) String() string {

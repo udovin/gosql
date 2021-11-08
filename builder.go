@@ -97,11 +97,15 @@ func (s rawBuilder) Values() []interface{} {
 	return s.values
 }
 
+type Expr interface {
+	Build(RawBuilder)
+}
+
 // BoolExpr represents boolean expression.
 type BoolExpr interface {
+	Expr
 	And(BoolExpr) BoolExpr
 	Or(BoolExpr) BoolExpr
-	Build(RawBuilder)
 }
 
 type exprKind int
@@ -124,28 +128,28 @@ func (e binaryExpr) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: e, rhs: o}
 }
 
-func (e binaryExpr) Build(state RawBuilder) {
-	e.lhs.Build(state)
+func (e binaryExpr) Build(builder RawBuilder) {
+	e.lhs.Build(builder)
 	switch e.kind {
 	case orExpr:
-		state.WriteString(" OR ")
+		builder.WriteString(" OR ")
 	case andExpr:
-		state.WriteString(" AND ")
+		builder.WriteString(" AND ")
 	default:
 		panic(fmt.Errorf("unsupported binary expr %q", e.kind))
 	}
-	e.rhs.Build(state)
+	e.rhs.Build(builder)
 }
 
 // Value represents comparable value.
 type Value interface {
+	Expr
 	Equal(interface{}) BoolExpr
 	NotEqual(interface{}) BoolExpr
 	Less(interface{}) BoolExpr
 	Greater(interface{}) BoolExpr
 	LessEqual(interface{}) BoolExpr
 	GreaterEqual(interface{}) BoolExpr
-	Build(RawBuilder)
 }
 
 // Column represents comparable table column.
@@ -175,8 +179,8 @@ func (c Column) GreaterEqual(o interface{}) BoolExpr {
 	return cmp{kind: greaterEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) Build(state RawBuilder) {
-	state.WriteName(string(c))
+func (c Column) Build(builder RawBuilder) {
+	builder.WriteName(string(c))
 }
 
 type value struct {
@@ -207,8 +211,50 @@ func (v value) GreaterEqual(o interface{}) BoolExpr {
 	return cmp{kind: greaterEqualCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) Build(state RawBuilder) {
-	state.WriteValue(v.value)
+func (v value) Build(builder RawBuilder) {
+	builder.WriteValue(v.value)
+}
+
+type orderKind int
+
+const (
+	ascOrder orderKind = iota
+	descOrder
+)
+
+type order struct {
+	kind orderKind
+	expr Expr
+}
+
+func (e order) Build(builder RawBuilder) {
+	e.expr.Build(builder)
+	switch e.kind {
+	case ascOrder:
+		builder.WriteString(" ASC")
+	case descOrder:
+		builder.WriteString(" DESC")
+	default:
+		panic(fmt.Errorf("unsupported order expr %q", e.kind))
+	}
+}
+
+func Asc(val interface{}) Expr {
+	switch v := val.(type) {
+	case order:
+		return order{kind: ascOrder, expr: v.expr}
+	default:
+		return order{kind: ascOrder, expr: wrapExpr(v)}
+	}
+}
+
+func Desc(val interface{}) Expr {
+	switch v := val.(type) {
+	case order:
+		return order{kind: descOrder, expr: v.expr}
+	default:
+		return order{kind: descOrder, expr: wrapExpr(v)}
+	}
 }
 
 type cmpKind int
@@ -235,33 +281,33 @@ func (c cmp) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: c, rhs: o}
 }
 
-func (c cmp) Build(state RawBuilder) {
-	c.lhs.Build(state)
+func (c cmp) Build(builder RawBuilder) {
+	c.lhs.Build(builder)
 	switch c.kind {
 	case eqCmp:
 		if isNullValue(c.rhs) {
-			state.WriteString(" IS NULL")
+			builder.WriteString(" IS NULL")
 			return
 		}
-		state.WriteString(" = ")
+		builder.WriteString(" = ")
 	case notEqCmp:
 		if isNullValue(c.rhs) {
-			state.WriteString(" IS NOT NULL")
+			builder.WriteString(" IS NOT NULL")
 			return
 		}
-		state.WriteString(" <> ")
+		builder.WriteString(" <> ")
 	case lessCmp:
-		state.WriteString(" < ")
+		builder.WriteString(" < ")
 	case greaterCmp:
-		state.WriteString(" > ")
+		builder.WriteString(" > ")
 	case lessEqualCmp:
-		state.WriteString(" <= ")
+		builder.WriteString(" <= ")
 	case greaterEqualCmp:
-		state.WriteString(" >= ")
+		builder.WriteString(" >= ")
 	default:
 		panic(fmt.Errorf("unsupported binaryExpr %q", c.kind))
 	}
-	c.rhs.Build(state)
+	c.rhs.Build(builder)
 }
 
 func wrapValue(val interface{}) Value {
@@ -274,4 +320,24 @@ func wrapValue(val interface{}) Value {
 func isNullValue(val Value) bool {
 	v, ok := val.(value)
 	return ok && v.value == nil
+}
+
+func wrapExpr(val interface{}) Expr {
+	switch v := val.(type) {
+	case Expr:
+		return v
+	case string:
+		return Column(v)
+	default:
+		panic(fmt.Errorf("unsupported type: %T", v))
+	}
+}
+
+func wrapOrderExpr(val interface{}) Expr {
+	switch v := val.(type) {
+	case order:
+		return v
+	default:
+		return Asc(wrapExpr(v))
+	}
 }
