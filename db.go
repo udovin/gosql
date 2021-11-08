@@ -38,7 +38,9 @@ func WithTx(b TxBeginner, fn func(tx *sql.Tx) error) error {
 		}
 	}()
 	if err := fn(tx); err != nil {
-		return tx.Rollback()
+		// Try to rollback transaction on error.
+		_ = tx.Rollback()
+		return err
 	}
 	return tx.Commit()
 }
