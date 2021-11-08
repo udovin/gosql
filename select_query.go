@@ -1,14 +1,11 @@
 package gosql
 
-import (
-	"strings"
-)
-
 // SelectQuery represents SQL select query.
 type SelectQuery interface {
 	Query
 	Names(names ...string) SelectQuery
 	Where(where BoolExpr) SelectQuery
+	OrderBy(names ...string) SelectQuery
 }
 
 type selectQuery struct {
@@ -16,6 +13,7 @@ type selectQuery struct {
 	table   string
 	names   []string
 	where   BoolExpr
+	orderBy []string
 }
 
 func (q selectQuery) Names(names ...string) SelectQuery {
@@ -28,41 +26,41 @@ func (q selectQuery) Where(where BoolExpr) SelectQuery {
 	return q
 }
 
-func (q selectQuery) Build() (string, []interface{}) {
-	var query strings.Builder
-	state := buildState{builder: q.builder}
-	query.WriteString("SELECT ")
-	q.buildValues(&query, &state)
-	query.WriteString(" FROM ")
-	query.WriteString(q.builder.buildName(q.table))
-	q.buildWhere(&query, &state)
-	return query.String(), state.Values()
+func (q selectQuery) OrderBy(names ...string) SelectQuery {
+	q.orderBy = names
+	return q
 }
 
-func (q selectQuery) buildValues(
-	query *strings.Builder, state *buildState,
-) {
+func (q selectQuery) Build() (string, []interface{}) {
+	builder := rawBuilder{builder: q.builder}
+	builder.WriteString("SELECT ")
+	q.buildValues(&builder)
+	builder.WriteString(" FROM ")
+	builder.WriteString(q.builder.buildName(q.table))
+	q.buildWhere(&builder)
+	return builder.String(), builder.Values()
+}
+
+func (q selectQuery) buildValues(builder *rawBuilder) {
 	if len(q.names) == 0 {
-		query.WriteRune('*')
+		builder.WriteRune('*')
 		return
 	}
 	for i, name := range q.names {
 		if i > 0 {
-			query.WriteString(", ")
+			builder.WriteString(", ")
 		}
-		query.WriteString(q.builder.buildName(name))
+		builder.WriteName(name)
 	}
 }
 
-func (q selectQuery) buildWhere(
-	query *strings.Builder, state *buildState,
-) {
-	query.WriteString(" WHERE ")
+func (q selectQuery) buildWhere(builder *rawBuilder) {
+	builder.WriteString(" WHERE ")
 	if q.where == nil {
-		query.WriteRune('1')
+		builder.WriteRune('1')
 		return
 	}
-	query.WriteString(q.where.Build(state))
+	q.where.Build(builder)
 }
 
 func (q selectQuery) String() string {

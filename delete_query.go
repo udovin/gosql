@@ -1,9 +1,5 @@
 package gosql
 
-import (
-	"strings"
-)
-
 // DeleteQuery represents SQL delete query.
 type DeleteQuery interface {
 	Query
@@ -22,30 +18,25 @@ func (q deleteQuery) Where(where BoolExpr) DeleteQuery {
 }
 
 func (q deleteQuery) Build() (string, []interface{}) {
-	var query strings.Builder
-	state := buildState{builder: q.builder}
-	query.WriteString("DELETE")
-	q.buildFrom(&query, &state)
-	q.buildWhere(&query, &state)
-	return query.String(), state.Values()
+	state := rawBuilder{builder: q.builder}
+	state.WriteString("DELETE")
+	q.buildFrom(&state)
+	q.buildWhere(&state)
+	return state.String(), state.Values()
 }
 
-func (q deleteQuery) buildFrom(
-	query *strings.Builder, state *buildState,
-) {
-	query.WriteString(" FROM ")
-	query.WriteString(q.builder.buildName(q.table))
+func (q deleteQuery) buildFrom(builder *rawBuilder) {
+	builder.WriteString(" FROM ")
+	builder.WriteName(q.table)
 }
 
-func (q deleteQuery) buildWhere(
-	query *strings.Builder, state *buildState,
-) {
-	query.WriteString(" WHERE ")
+func (q deleteQuery) buildWhere(builder *rawBuilder) {
+	builder.WriteString(" WHERE ")
 	if q.where == nil {
-		query.WriteRune('1')
+		builder.WriteRune('1')
 		return
 	}
-	query.WriteString(q.where.Build(state))
+	q.where.Build(builder)
 }
 
 func (q deleteQuery) String() string {

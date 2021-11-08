@@ -1,9 +1,5 @@
 package gosql
 
-import (
-	"strings"
-)
-
 // InsertQuery represents SQL insert query.
 type InsertQuery interface {
 	Query
@@ -32,38 +28,35 @@ func (q insertQuery) Values(values ...interface{}) InsertQuery {
 }
 
 func (q insertQuery) Build() (string, []interface{}) {
-	var query strings.Builder
-	state := buildState{builder: q.builder}
-	query.WriteString("INSERT INTO ")
-	query.WriteString(q.builder.buildName(q.table))
-	q.buildInsert(&query, &state)
-	return query.String(), state.Values()
+	state := rawBuilder{builder: q.builder}
+	state.WriteString("INSERT INTO ")
+	state.WriteString(q.builder.buildName(q.table))
+	q.buildInsert(&state)
+	return state.String(), state.Values()
 }
 
-func (q insertQuery) buildInsert(
-	query *strings.Builder, state *buildState,
-) {
+func (q insertQuery) buildInsert(builder *rawBuilder) {
 	if len(q.names) == 0 {
 		panic("list of names can not be empty")
 	}
 	if len(q.names) != len(q.values) {
 		panic("amount of names and values differs")
 	}
-	query.WriteString(" (")
+	builder.WriteString(" (")
 	for i, name := range q.names {
 		if i > 0 {
-			query.WriteString(", ")
+			builder.WriteString(", ")
 		}
-		query.WriteString(q.builder.buildName(name))
+		builder.WriteName(name)
 	}
-	query.WriteString(") VALUES (")
+	builder.WriteString(") VALUES (")
 	for i, value := range q.values {
 		if i > 0 {
-			query.WriteString(", ")
+			builder.WriteString(", ")
 		}
-		query.WriteString(value.Build(state))
+		value.Build(builder)
 	}
-	query.WriteRune(')')
+	builder.WriteRune(')')
 }
 
 func (q insertQuery) String() string {

@@ -56,33 +56,52 @@ func (b *builder) buildOpt(n int) string {
 	return fmt.Sprintf("$%d", n)
 }
 
-type BuildState interface {
-	Builder() *builder
+// RawBuilder is used for building query string with specified values.
+type RawBuilder interface {
+	WriteRune(rune)
+	WriteString(string)
+	WriteName(string)
+	WriteValue(interface{})
+	String() string
 	Values() []interface{}
-	AddValue(value interface{})
 }
 
-type buildState struct {
+type rawBuilder struct {
 	builder *builder
+	query   strings.Builder
 	values  []interface{}
 }
 
-func (s buildState) Builder() *builder {
-	return s.builder
+func (s *rawBuilder) WriteRune(r rune) {
+	s.query.WriteRune(r)
 }
 
-func (s buildState) Values() []interface{} {
+func (s *rawBuilder) WriteString(str string) {
+	s.query.WriteString(str)
+}
+
+func (s *rawBuilder) WriteName(name string) {
+	s.query.WriteString(s.builder.buildName(name))
+}
+
+func (s *rawBuilder) WriteValue(value interface{}) {
+	s.values = append(s.values, value)
+	s.query.WriteString(s.builder.buildOpt(len(s.values)))
+}
+
+func (s rawBuilder) String() string {
+	return s.query.String()
+}
+
+func (s rawBuilder) Values() []interface{} {
 	return s.values
 }
 
-func (s *buildState) AddValue(value interface{}) {
-	s.values = append(s.values, value)
-}
-
+// BoolExpr represents boolean expression.
 type BoolExpr interface {
 	And(BoolExpr) BoolExpr
 	Or(BoolExpr) BoolExpr
-	Build(BuildState) string
+	Build(RawBuilder)
 }
 
 type exprKind int
@@ -105,21 +124,20 @@ func (e binaryExpr) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: e, rhs: o}
 }
 
-func (e binaryExpr) Build(state BuildState) string {
-	var builder strings.Builder
-	builder.WriteString(e.lhs.Build(state))
+func (e binaryExpr) Build(state RawBuilder) {
+	e.lhs.Build(state)
 	switch e.kind {
 	case orExpr:
-		builder.WriteString(" OR ")
+		state.WriteString(" OR ")
 	case andExpr:
-		builder.WriteString(" AND ")
+		state.WriteString(" AND ")
 	default:
 		panic(fmt.Errorf("unsupported binary expr %q", e.kind))
 	}
-	builder.WriteString(e.rhs.Build(state))
-	return builder.String()
+	e.rhs.Build(state)
 }
 
+// Value represents comparable value.
 type Value interface {
 	Equal(interface{}) BoolExpr
 	NotEqual(interface{}) BoolExpr
@@ -127,9 +145,10 @@ type Value interface {
 	Greater(interface{}) BoolExpr
 	LessEqual(interface{}) BoolExpr
 	GreaterEqual(interface{}) BoolExpr
-	Build(BuildState) string
+	Build(RawBuilder)
 }
 
+// Column represents comparable table column.
 type Column string
 
 func (c Column) Equal(o interface{}) BoolExpr {
@@ -156,8 +175,8 @@ func (c Column) GreaterEqual(o interface{}) BoolExpr {
 	return cmp{kind: greaterEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) Build(state BuildState) string {
-	return state.Builder().buildName(string(c))
+func (c Column) Build(state RawBuilder) {
+	state.WriteName(string(c))
 }
 
 type value struct {
@@ -188,9 +207,8 @@ func (v value) GreaterEqual(o interface{}) BoolExpr {
 	return cmp{kind: greaterEqualCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) Build(state BuildState) string {
-	state.AddValue(v.value)
-	return state.Builder().buildOpt(len(state.Values()))
+func (v value) Build(state RawBuilder) {
+	state.WriteValue(v.value)
 }
 
 type cmpKind int
@@ -217,35 +235,33 @@ func (c cmp) And(o BoolExpr) BoolExpr {
 	return binaryExpr{kind: andExpr, lhs: c, rhs: o}
 }
 
-func (c cmp) Build(state BuildState) string {
-	var builder strings.Builder
-	builder.WriteString(c.lhs.Build(state))
+func (c cmp) Build(state RawBuilder) {
+	c.lhs.Build(state)
 	switch c.kind {
 	case eqCmp:
 		if isNullValue(c.rhs) {
-			builder.WriteString(" IS NULL")
-			return builder.String()
+			state.WriteString(" IS NULL")
+			return
 		}
-		builder.WriteString(" = ")
+		state.WriteString(" = ")
 	case notEqCmp:
 		if isNullValue(c.rhs) {
-			builder.WriteString(" IS NOT NULL")
-			return builder.String()
+			state.WriteString(" IS NOT NULL")
+			return
 		}
-		builder.WriteString(" <> ")
+		state.WriteString(" <> ")
 	case lessCmp:
-		builder.WriteString(" < ")
+		state.WriteString(" < ")
 	case greaterCmp:
-		builder.WriteString(" > ")
+		state.WriteString(" > ")
 	case lessEqualCmp:
-		builder.WriteString(" <= ")
+		state.WriteString(" <= ")
 	case greaterEqualCmp:
-		builder.WriteString(" >= ")
+		state.WriteString(" >= ")
 	default:
 		panic(fmt.Errorf("unsupported binaryExpr %q", c.kind))
 	}
-	builder.WriteString(c.rhs.Build(state))
-	return builder.String()
+	c.rhs.Build(state)
 }
 
 func wrapValue(val interface{}) Value {

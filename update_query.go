@@ -1,9 +1,5 @@
 package gosql
 
-import (
-	"strings"
-)
-
 // UpdateQuery represents SQL update query.
 type UpdateQuery interface {
 	Query
@@ -39,44 +35,39 @@ func (q updateQuery) Values(values ...interface{}) UpdateQuery {
 }
 
 func (q updateQuery) Build() (string, []interface{}) {
-	var query strings.Builder
-	state := buildState{builder: q.builder}
-	query.WriteString("UPDATE ")
-	query.WriteString(q.builder.buildName(q.table))
-	q.buildSet(&query, &state)
-	q.buildWhere(&query, &state)
-	return query.String(), state.Values()
+	builder := rawBuilder{builder: q.builder}
+	builder.WriteString("UPDATE ")
+	builder.WriteString(q.builder.buildName(q.table))
+	q.buildSet(&builder)
+	q.buildWhere(&builder)
+	return builder.String(), builder.Values()
 }
 
-func (q updateQuery) buildSet(
-	query *strings.Builder, state *buildState,
-) {
+func (q updateQuery) buildSet(builder *rawBuilder) {
 	if len(q.names) == 0 {
 		panic("list of names can not be empty")
 	}
 	if len(q.names) != len(q.values) {
 		panic("amount of names and values differs")
 	}
-	query.WriteString(" SET ")
+	builder.WriteString(" SET ")
 	for i := range q.names {
 		if i > 0 {
-			query.WriteString(", ")
+			builder.WriteString(", ")
 		}
-		query.WriteString(q.builder.buildName(q.names[i]))
-		query.WriteString(" = ")
-		query.WriteString(q.values[i].Build(state))
+		builder.WriteName(q.names[i])
+		builder.WriteString(" = ")
+		q.values[i].Build(builder)
 	}
 }
 
-func (q updateQuery) buildWhere(
-	query *strings.Builder, state *buildState,
-) {
-	query.WriteString(" WHERE ")
+func (q updateQuery) buildWhere(builder *rawBuilder) {
+	builder.WriteString(" WHERE ")
 	if q.where == nil {
-		query.WriteRune('1')
+		builder.WriteRune('1')
 		return
 	}
-	query.WriteString(q.where.Build(state))
+	q.where.Build(builder)
 }
 
 func (q updateQuery) String() string {
