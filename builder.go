@@ -63,11 +63,11 @@ func (b *builder) Insert(table string) InsertQuery {
 	return insertQuery{builder: b, table: table}
 }
 
-func (b *builder) buildName(name string) string {
+func (b builder) buildName(name string) string {
 	return fmt.Sprintf("%q", name)
 }
 
-func (b *builder) buildOpt(n int) string {
+func (b builder) buildOpt(n int) string {
 	return fmt.Sprintf("$%d", n)
 }
 
