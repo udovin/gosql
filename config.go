@@ -108,5 +108,5 @@ func (c PostgresConfig) newDB(writable bool) (*sql.DB, error) {
 	if writable {
 		connStr.WriteString(" target_session_attrs=read-write")
 	}
-	return sql.Open("postgres", connStr.String())
+	return sql.Open("pgx", connStr.String())
 }
