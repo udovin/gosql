@@ -43,6 +43,7 @@ type PostgresConfig struct {
 	User     string
 	Password string
 	Name     string
+	SSLMode  string
 }
 
 func (c PostgresConfig) NewDB() (*DB, error) {
@@ -98,7 +99,10 @@ func (c PostgresConfig) newDB(writable bool) (*sql.DB, error) {
 	connStr.WriteString(" dbname=")
 	connStr.WriteString(c.Name)
 	connStr.WriteString(" statement_cache_mode=describe")
-	connStr.WriteString(" sslmode=require")
+	if c.SSLMode != "" {
+		connStr.WriteString(" sslmode=")
+		connStr.WriteString(c.SSLMode)
+	}
 	connStr.WriteString(" statement_timeout=120000")                   // 2 min.
 	connStr.WriteString(" idle_in_transaction_session_timeout=120000") // 2 min.
 	if writable {
