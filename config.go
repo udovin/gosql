@@ -98,7 +98,7 @@ func (c PostgresConfig) newDB(writable bool) (*sql.DB, error) {
 	connStr.WriteString(c.Password)
 	connStr.WriteString(" dbname=")
 	connStr.WriteString(c.Name)
-	connStr.WriteString(" statement_cache_mode=describe")
+	// connStr.WriteString(" statement_cache_mode=describe") // TODO: This is required for pgbouncer and odyssey.
 	if c.SSLMode != "" {
 		connStr.WriteString(" sslmode=")
 		connStr.WriteString(c.SSLMode)
