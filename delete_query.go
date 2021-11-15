@@ -3,16 +3,16 @@ package gosql
 // DeleteQuery represents SQL delete query.
 type DeleteQuery interface {
 	Query
-	Where(where BoolExpr) DeleteQuery
+	Where(where BoolExpression) DeleteQuery
 }
 
 type deleteQuery struct {
 	builder *builder
 	table   string
-	where   BoolExpr
+	where   BoolExpression
 }
 
-func (q deleteQuery) Where(where BoolExpr) DeleteQuery {
+func (q deleteQuery) Where(where BoolExpression) DeleteQuery {
 	q.where = where
 	return q
 }

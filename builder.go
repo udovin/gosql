@@ -27,10 +27,13 @@ type Query interface {
 	String() string
 }
 
+// Dialect represents kind of SQL dialect.
 type Dialect int
 
 const (
+	// SQLiteDialect represents SQLite dialect.
 	SQLiteDialect Dialect = iota
+	// PostgresDialect represents Postgres dialect.
 	PostgresDialect
 )
 
@@ -112,15 +115,16 @@ func (s rawBuilder) Values() []interface{} {
 	return s.values
 }
 
-type Expr interface {
+// Expression represents buildable expression.
+type Expression interface {
 	Build(RawBuilder)
 }
 
-// BoolExpr represents boolean expression.
-type BoolExpr interface {
-	Expr
-	And(BoolExpr) BoolExpr
-	Or(BoolExpr) BoolExpr
+// BoolExpression represents boolean expression.
+type BoolExpression interface {
+	Expression
+	And(BoolExpression) BoolExpression
+	Or(BoolExpression) BoolExpression
 }
 
 type exprKind int
@@ -132,14 +136,14 @@ const (
 
 type binaryExpr struct {
 	kind     exprKind
-	lhs, rhs BoolExpr
+	lhs, rhs BoolExpression
 }
 
-func (e binaryExpr) Or(o BoolExpr) BoolExpr {
+func (e binaryExpr) Or(o BoolExpression) BoolExpression {
 	return binaryExpr{kind: orExpr, lhs: e, rhs: o}
 }
 
-func (e binaryExpr) And(o BoolExpr) BoolExpr {
+func (e binaryExpr) And(o BoolExpression) BoolExpression {
 	return binaryExpr{kind: andExpr, lhs: e, rhs: o}
 }
 
@@ -151,46 +155,52 @@ func (e binaryExpr) Build(builder RawBuilder) {
 	case andExpr:
 		builder.WriteString(" AND ")
 	default:
-		panic(fmt.Errorf("unsupported binary expr %q", e.kind))
+		panic(fmt.Errorf("unsupported binary expression: %d", e.kind))
 	}
 	e.rhs.Build(builder)
 }
 
 // Value represents comparable value.
 type Value interface {
-	Expr
-	Equal(interface{}) BoolExpr
-	NotEqual(interface{}) BoolExpr
-	Less(interface{}) BoolExpr
-	Greater(interface{}) BoolExpr
-	LessEqual(interface{}) BoolExpr
-	GreaterEqual(interface{}) BoolExpr
+	Expression
+	Equal(interface{}) BoolExpression
+	NotEqual(interface{}) BoolExpression
+	Less(interface{}) BoolExpression
+	Greater(interface{}) BoolExpression
+	LessEqual(interface{}) BoolExpression
+	GreaterEqual(interface{}) BoolExpression
 }
 
 // Column represents comparable table column.
 type Column string
 
-func (c Column) Equal(o interface{}) BoolExpr {
+// Equal build boolean expression: "column = value".
+func (c Column) Equal(o interface{}) BoolExpression {
 	return cmp{kind: eqCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) NotEqual(o interface{}) BoolExpr {
+// NotEqual build boolean expression: "column <> value".
+func (c Column) NotEqual(o interface{}) BoolExpression {
 	return cmp{kind: notEqCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) Less(o interface{}) BoolExpr {
+// Less build boolean expression: "column < value".
+func (c Column) Less(o interface{}) BoolExpression {
 	return cmp{kind: lessCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) Greater(o interface{}) BoolExpr {
+// Greater build boolean expression: "column > value".
+func (c Column) Greater(o interface{}) BoolExpression {
 	return cmp{kind: greaterCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) LessEqual(o interface{}) BoolExpr {
+// LessEqual build boolean expression: "column <= value".
+func (c Column) LessEqual(o interface{}) BoolExpression {
 	return cmp{kind: lessEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
-func (c Column) GreaterEqual(o interface{}) BoolExpr {
+// GreaterEqual build boolean expression: "column >= value".
+func (c Column) GreaterEqual(o interface{}) BoolExpression {
 	return cmp{kind: greaterEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
@@ -202,27 +212,27 @@ type value struct {
 	value interface{}
 }
 
-func (v value) Equal(o interface{}) BoolExpr {
+func (v value) Equal(o interface{}) BoolExpression {
 	return cmp{kind: eqCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) NotEqual(o interface{}) BoolExpr {
+func (v value) NotEqual(o interface{}) BoolExpression {
 	return cmp{kind: notEqCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) Less(o interface{}) BoolExpr {
+func (v value) Less(o interface{}) BoolExpression {
 	return cmp{kind: lessCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) Greater(o interface{}) BoolExpr {
+func (v value) Greater(o interface{}) BoolExpression {
 	return cmp{kind: greaterCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) LessEqual(o interface{}) BoolExpr {
+func (v value) LessEqual(o interface{}) BoolExpression {
 	return cmp{kind: lessEqualCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) GreaterEqual(o interface{}) BoolExpr {
+func (v value) GreaterEqual(o interface{}) BoolExpression {
 	return cmp{kind: greaterEqualCmp, lhs: v, rhs: wrapValue(o)}
 }
 
@@ -230,45 +240,63 @@ func (v value) Build(builder RawBuilder) {
 	builder.WriteValue(v.value)
 }
 
-type orderKind int
+type Order int
 
 const (
-	ascOrder orderKind = iota
-	descOrder
+	AscendingOrder Order = iota
+	DescendingOrder
 )
 
+type OrderExpression interface {
+	Expression
+	Order() Order
+	Expression() Expression
+}
+
 type order struct {
-	kind orderKind
-	expr Expr
+	kind Order
+	expr Expression
+}
+
+// Order returns order of expression.
+func (e order) Order() Order {
+	return e.kind
+}
+
+// Expression returns wrapped expression.
+func (e order) Expression() Expression {
+	return e.expr
 }
 
 func (e order) Build(builder RawBuilder) {
 	e.expr.Build(builder)
 	switch e.kind {
-	case ascOrder:
+	case AscendingOrder:
 		builder.WriteString(" ASC")
-	case descOrder:
+	case DescendingOrder:
 		builder.WriteString(" DESC")
 	default:
-		panic(fmt.Errorf("unsupported order expr %q", e.kind))
+		panic(fmt.Errorf("unsupported order: %d", e.kind))
 	}
 }
 
-func Asc(val interface{}) Expr {
+// Ascending represents ascending order of sorting.
+func Ascending(val interface{}) OrderExpression {
 	switch v := val.(type) {
-	case order:
-		return order{kind: ascOrder, expr: v.expr}
+	case OrderExpression:
+		return order{kind: AscendingOrder, expr: v.Expression()}
 	default:
-		return order{kind: ascOrder, expr: wrapExpr(v)}
+		return order{kind: AscendingOrder, expr: wrapExpression(v)}
 	}
 }
 
-func Desc(val interface{}) Expr {
+// Descending represents descending order of sorting.
+func Descending(val interface{}) OrderExpression {
 	switch v := val.(type) {
-	case order:
-		return order{kind: descOrder, expr: v.expr}
+	case OrderExpression:
+		return order{kind: DescendingOrder, expr: v.Expression()}
 	default:
-		return order{kind: descOrder, expr: wrapExpr(v)}
+		return order{kind: DescendingOrder, expr: wrapExpression(v)}
 	}
 }
 
@@ -288,11 +316,11 @@ type cmp struct {
 	lhs, rhs Value
 }
 
-func (c cmp) Or(o BoolExpr) BoolExpr {
+func (c cmp) Or(o BoolExpression) BoolExpression {
 	return binaryExpr{kind: orExpr, lhs: c, rhs: o}
 }
 
-func (c cmp) And(o BoolExpr) BoolExpr {
+func (c cmp) And(o BoolExpression) BoolExpression {
 	return binaryExpr{kind: andExpr, lhs: c, rhs: o}
 }
 
@@ -325,6 +353,11 @@ func (c cmp) Build(builder RawBuilder) {
 	c.rhs.Build(builder)
 }
 
+func isNullValue(val Value) bool {
+	v, ok := val.(value)
+	return ok && v.value == nil
+}
+
 func wrapValue(val interface{}) Value {
 	if v, ok := val.(Value); ok {
 		return v
@@ -332,14 +365,9 @@ func wrapValue(val interface{}) Value {
 	return value{value: val}
 }
 
-func isNullValue(val Value) bool {
-	v, ok := val.(value)
-	return ok && v.value == nil
-}
-
-func wrapExpr(val interface{}) Expr {
+func wrapExpression(val interface{}) Expression {
 	switch v := val.(type) {
-	case Expr:
+	case Expression:
 		return v
 	case string:
 		return Column(v)
@@ -348,11 +376,11 @@ func wrapExpr(val interface{}) Expr {
 	}
 }
 
-func wrapOrderExpr(val interface{}) Expr {
+func wrapOrderExpression(val interface{}) OrderExpression {
 	switch v := val.(type) {
-	case order:
+	case OrderExpression:
 		return v
 	default:
-		return Asc(wrapExpr(v))
+		return Ascending(wrapExpression(v))
 	}
 }

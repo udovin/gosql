@@ -3,7 +3,7 @@ package gosql
 // UpdateQuery represents SQL update query.
 type UpdateQuery interface {
 	Query
-	Where(where BoolExpr) UpdateQuery
+	Where(where BoolExpression) UpdateQuery
 	Names(names ...string) UpdateQuery
 	Values(values ...interface{}) UpdateQuery
 }
@@ -11,12 +11,12 @@ type UpdateQuery interface {
 type updateQuery struct {
 	builder *builder
 	table   string
-	where   BoolExpr
+	where   BoolExpression
 	names   []string
 	values  []Value
 }
 
-func (q updateQuery) Where(where BoolExpr) UpdateQuery {
+func (q updateQuery) Where(where BoolExpression) UpdateQuery {
 	q.where = where
 	return q
 }

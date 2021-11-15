@@ -4,7 +4,7 @@ package gosql
 type SelectQuery interface {
 	Query
 	Names(names ...string) SelectQuery
-	Where(where BoolExpr) SelectQuery
+	Where(where BoolExpression) SelectQuery
 	OrderBy(names ...interface{}) SelectQuery
 }
 
@@ -12,8 +12,8 @@ type selectQuery struct {
 	builder *builder
 	table   string
 	names   []string
-	where   BoolExpr
-	orderBy []Expr
+	where   BoolExpression
+	orderBy []OrderExpression
 }
 
 func (q selectQuery) Names(names ...string) SelectQuery {
@@ -21,7 +21,7 @@ func (q selectQuery) Names(names ...string) SelectQuery {
 	return q
 }
 
-func (q selectQuery) Where(where BoolExpr) SelectQuery {
+func (q selectQuery) Where(where BoolExpression) SelectQuery {
 	q.where = where
 	return q
 }
@@ -29,7 +29,7 @@ func (q selectQuery) Where(where BoolExpr) SelectQuery {
 func (q selectQuery) OrderBy(names ...interface{}) SelectQuery {
 	q.orderBy = nil
 	for _, name := range names {
-		q.orderBy = append(q.orderBy, wrapOrderExpr(name))
+		q.orderBy = append(q.orderBy, wrapOrderExpression(name))
 	}
 	return q
 }
