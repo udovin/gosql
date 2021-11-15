@@ -24,34 +24,62 @@ type TxBeginner interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
+// BeginTxOption represents option for BeginTx.
+type BeginTxOption func(ctx *context.Context, opts **sql.TxOptions)
+
+// WithContext represents context option for BeginTx.
+func WithContext(ctx context.Context) BeginTxOption {
+	return func(txCtx *context.Context, _ **sql.TxOptions) {
+		*txCtx = ctx
+	}
+}
+
+// WithTxOptions represents TxOptions option for BeginTx.
+func WithTxOptions(opts *sql.TxOptions) BeginTxOption {
+	return func(_ *context.Context, txOpts **sql.TxOptions) {
+		*txOpts = opts
+	}
+}
+
 // WithTx represents wrapper for code that should use transaction.
-func WithTx(b TxBeginner, fn func(tx *sql.Tx) error) error {
-	tx, err := b.BeginTx(context.Background(), nil)
+func WithTx(
+	b TxBeginner, fn func(tx *sql.Tx) error, options ...BeginTxOption,
+) error {
+	var ctx context.Context
+	var opts *sql.TxOptions
+	for _, option := range options {
+		option(&ctx, &opts)
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	tx, err := b.BeginTx(ctx, opts)
 	if err != nil {
 		return err
 	}
+	rollback := true
 	defer func() {
-		if r := recover(); r != nil {
-			// Try to rollback transaction on panic.
+		if rollback {
+			// Try to rollback transaction on error or panic.
 			_ = tx.Rollback()
-			panic(r)
 		}
 	}()
 	if err := fn(tx); err != nil {
-		// Try to rollback transaction on error.
-		_ = tx.Rollback()
 		return err
 	}
+	rollback = false
 	return tx.Commit()
 }
 
 // WithEnsuredTx ensures that code uses sql.Tx.
-func WithEnsuredTx(tx WeakTx, fn func(tx *sql.Tx) error) error {
+func WithEnsuredTx(
+	tx WeakTx, fn func(tx *sql.Tx) error, options ...BeginTxOption,
+) error {
 	switch v := tx.(type) {
 	case *sql.Tx:
 		return fn(v)
 	case TxBeginner:
-		return WithTx(v, fn)
+		return WithTx(v, fn, options...)
 	default:
 		panic(fmt.Errorf("unsupported type: %T", v))
 	}
