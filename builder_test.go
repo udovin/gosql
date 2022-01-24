@@ -25,6 +25,7 @@ func TestSelectQuery(t *testing.T) {
 		b.Select("t1").Where(Column("c1").Greater(0).And(Column("c1").LessEqual(100)).Or(Column("c1").Less(-10))),
 		b.Select("t1").Where(Column("c1").Greater(0).And(Column("c1").LessEqual(100)).And(Column("c1").Less(10))),
 		b.Select("t1").Where(Column("c1").Greater(0).And(Column("c1").LessEqual(100).Or(Column("c1").Less(-10)))),
+		b.Select("t1").OrderBy("c1").Limit(123),
 	}
 	outputs := []string{
 		`SELECT * FROM "t1" WHERE 1`,
@@ -44,6 +45,7 @@ func TestSelectQuery(t *testing.T) {
 		`SELECT * FROM "t1" WHERE ("c1" > $1 AND "c1" <= $2) OR "c1" < $3`,
 		`SELECT * FROM "t1" WHERE "c1" > $1 AND "c1" <= $2 AND "c1" < $3`,
 		`SELECT * FROM "t1" WHERE "c1" > $1 AND ("c1" <= $2 OR "c1" < $3)`,
+		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" ASC LIMIT 123`,
 	}
 	for i, input := range inputs {
 		query := input.String()

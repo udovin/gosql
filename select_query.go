@@ -1,11 +1,16 @@
 package gosql
 
+import (
+	"strconv"
+)
+
 // SelectQuery represents SQL select query.
 type SelectQuery interface {
 	Query
 	Names(names ...string) SelectQuery
 	Where(where BoolExpression) SelectQuery
 	OrderBy(names ...interface{}) SelectQuery
+	Limit(limit int) SelectQuery
 }
 
 type selectQuery struct {
@@ -14,6 +19,7 @@ type selectQuery struct {
 	names   []string
 	where   BoolExpression
 	orderBy []OrderExpression
+	limit   int
 }
 
 func (q selectQuery) Names(names ...string) SelectQuery {
@@ -34,6 +40,11 @@ func (q selectQuery) OrderBy(names ...interface{}) SelectQuery {
 	return q
 }
 
+func (q selectQuery) Limit(limit int) SelectQuery {
+	q.limit = limit
+	return q
+}
+
 func (q selectQuery) Build() (string, []interface{}) {
 	builder := rawBuilder{builder: q.builder}
 	builder.WriteString("SELECT ")
@@ -42,6 +53,10 @@ func (q selectQuery) Build() (string, []interface{}) {
 	builder.WriteString(q.builder.buildName(q.table))
 	q.buildWhere(&builder)
 	q.buildOrderBy(&builder)
+	if q.limit > 0 {
+		builder.WriteString(" LIMIT ")
+		builder.WriteString(strconv.Itoa(q.limit))
+	}
 	return builder.String(), builder.Values()
 }
 
