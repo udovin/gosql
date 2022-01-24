@@ -22,6 +22,9 @@ func TestSelectQuery(t *testing.T) {
 		b.Select("t1").Where(Column("c1").Greater(0).Or(Column("c1").LessEqual(100))),
 		b.Select("t1").OrderBy("c1", "c2"),
 		b.Select("t1").OrderBy(Descending("c1"), Descending(Ascending("c2")), Ascending(Descending("c3"))),
+		b.Select("t1").Where(Column("c1").Greater(0).And(Column("c1").LessEqual(100)).Or(Column("c1").Less(-10))),
+		b.Select("t1").Where(Column("c1").Greater(0).And(Column("c1").LessEqual(100)).And(Column("c1").Less(10))),
+		b.Select("t1").Where(Column("c1").Greater(0).And(Column("c1").LessEqual(100).Or(Column("c1").Less(-10)))),
 	}
 	outputs := []string{
 		`SELECT * FROM "t1" WHERE 1`,
@@ -34,10 +37,13 @@ func TestSelectQuery(t *testing.T) {
 		`SELECT * FROM "t1" WHERE "c3" > $1`,
 		`SELECT * FROM "t1" WHERE "c3" <= $1`,
 		`SELECT * FROM "t1" WHERE "c3" >= $1`,
-		`SELECT * FROM "t1" WHERE ("c1" > $1 AND "c1" <= $2)`,
-		`SELECT * FROM "t1" WHERE ("c1" > $1 OR "c1" <= $2)`,
+		`SELECT * FROM "t1" WHERE "c1" > $1 AND "c1" <= $2`,
+		`SELECT * FROM "t1" WHERE "c1" > $1 OR "c1" <= $2`,
 		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" ASC, "c2" ASC`,
 		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" DESC, "c2" DESC, "c3" ASC`,
+		`SELECT * FROM "t1" WHERE ("c1" > $1 AND "c1" <= $2) OR "c1" < $3`,
+		`SELECT * FROM "t1" WHERE "c1" > $1 AND "c1" <= $2 AND "c1" < $3`,
+		`SELECT * FROM "t1" WHERE "c1" > $1 AND ("c1" <= $2 OR "c1" < $3)`,
 	}
 	for i, input := range inputs {
 		query := input.String()
