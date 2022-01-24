@@ -34,8 +34,8 @@ func TestSelectQuery(t *testing.T) {
 		`SELECT * FROM "t1" WHERE "c3" > $1`,
 		`SELECT * FROM "t1" WHERE "c3" <= $1`,
 		`SELECT * FROM "t1" WHERE "c3" >= $1`,
-		`SELECT * FROM "t1" WHERE "c1" > $1 AND "c1" <= $2`,
-		`SELECT * FROM "t1" WHERE "c1" > $1 OR "c1" <= $2`,
+		`SELECT * FROM "t1" WHERE ("c1" > $1 AND "c1" <= $2)`,
+		`SELECT * FROM "t1" WHERE ("c1" > $1 OR "c1" <= $2)`,
 		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" ASC, "c2" ASC`,
 		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" DESC, "c2" DESC, "c3" ASC`,
 	}

@@ -148,6 +148,7 @@ func (e binaryExpr) And(o BoolExpression) BoolExpression {
 }
 
 func (e binaryExpr) Build(builder RawBuilder) {
+	builder.WriteRune('(')
 	e.lhs.Build(builder)
 	switch e.kind {
 	case orExpr:
@@ -158,6 +159,7 @@ func (e binaryExpr) Build(builder RawBuilder) {
 		panic(fmt.Errorf("unsupported binary expression: %d", e.kind))
 	}
 	e.rhs.Build(builder)
+	builder.WriteRune(')')
 }
 
 // Value represents comparable value.
