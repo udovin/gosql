@@ -27,11 +27,10 @@ func TestSQLite(t *testing.T) {
 func TestTxOptions(t *testing.T) {
 	{
 		var opts *sql.TxOptions
-		option := WithTxOptions(&sql.TxOptions{
+		WithTxOptions(&sql.TxOptions{
 			ReadOnly:  true,
 			Isolation: sql.LevelRepeatableRead,
-		})
-		option(&opts)
+		})(&opts)
 		if opts == nil {
 			t.Fatal("Opts should be initialized")
 		}
@@ -44,46 +43,46 @@ func TestTxOptions(t *testing.T) {
 	}
 	{
 		var opts *sql.TxOptions
-		option := WithReadOnly(true)
-		option(&opts)
+		WithReadOnly(true)(&opts)
 		if opts == nil {
 			t.Fatal("Opts should be initialized")
 		}
 		if !opts.ReadOnly {
-			t.Fatal("Opts should be readonly")
+			t.Fatal("Opts should marked readonly")
 		}
 		if opts.Isolation != sql.LevelDefault {
-			t.Fatal("Opts should be default")
+			t.Fatal("Opts should marked default")
 		}
 	}
 	{
 		var opts *sql.TxOptions
-		option := WithIsolation(sql.LevelReadCommitted)
-		option(&opts)
+		WithIsolation(sql.LevelReadCommitted)(&opts)
 		if opts == nil {
 			t.Fatal("Opts should be initialized")
 		}
 		if opts.ReadOnly {
-			t.Fatal("Opts should be writable")
+			t.Fatal("Opts should marked writable")
 		}
 		if opts.Isolation != sql.LevelReadCommitted {
-			t.Fatal("Opts should be read commited")
+			t.Fatal("Opts should marked read commited")
 		}
 	}
 	{
 		var opts *sql.TxOptions
-		option1 := WithReadOnly(true)
-		option2 := WithIsolation(sql.LevelSerializable)
-		option1(&opts)
-		option2(&opts)
+		WithReadOnly(true)(&opts)
+		WithIsolation(sql.LevelSerializable)(&opts)
 		if opts == nil {
 			t.Fatal("Opts should be initialized")
 		}
 		if !opts.ReadOnly {
-			t.Fatal("Opts should be readonly")
+			t.Fatal("Opts should marked readonly")
 		}
 		if opts.Isolation != sql.LevelSerializable {
-			t.Fatal("Opts should be read commited")
+			t.Fatal("Opts should marked serializable")
+		}
+		WithReadOnly(false)(&opts)
+		if opts.ReadOnly {
+			t.Fatal("Opts should marked writable")
 		}
 	}
 }
