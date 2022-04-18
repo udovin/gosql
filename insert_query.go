@@ -3,8 +3,8 @@ package gosql
 // InsertQuery represents SQL insert query.
 type InsertQuery interface {
 	Query
-	Names(name ...string) InsertQuery
-	Values(values ...interface{}) InsertQuery
+	SetNames(name ...string)
+	SetValues(values ...interface{})
 }
 
 type insertQuery struct {
@@ -14,17 +14,15 @@ type insertQuery struct {
 	values  []Value
 }
 
-func (q insertQuery) Names(names ...string) InsertQuery {
+func (q *insertQuery) SetNames(names ...string) {
 	q.names = names
-	return q
 }
 
-func (q insertQuery) Values(values ...interface{}) InsertQuery {
+func (q *insertQuery) SetValues(values ...interface{}) {
 	q.values = nil
 	for _, val := range values {
 		q.values = append(q.values, wrapValue(val))
 	}
-	return q
 }
 
 func (q insertQuery) Build() (string, []interface{}) {

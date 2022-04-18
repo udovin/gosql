@@ -51,19 +51,19 @@ func (b builder) Dialect() Dialect {
 }
 
 func (b *builder) Select(table string) SelectQuery {
-	return selectQuery{builder: b, table: table}
+	return &selectQuery{builder: b, table: table}
 }
 
 func (b *builder) Update(table string) UpdateQuery {
-	return updateQuery{builder: b, table: table}
+	return &updateQuery{builder: b, table: table}
 }
 
 func (b *builder) Delete(table string) DeleteQuery {
-	return deleteQuery{builder: b, table: table}
+	return &deleteQuery{builder: b, table: table}
 }
 
 func (b *builder) Insert(table string) InsertQuery {
-	return insertQuery{builder: b, table: table}
+	return &insertQuery{builder: b, table: table}
 }
 
 func (b builder) buildName(name string) string {

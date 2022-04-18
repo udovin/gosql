@@ -3,9 +3,9 @@ package gosql
 // UpdateQuery represents SQL update query.
 type UpdateQuery interface {
 	Query
-	Where(where BoolExpression) UpdateQuery
-	Names(names ...string) UpdateQuery
-	Values(values ...interface{}) UpdateQuery
+	SetWhere(where BoolExpression)
+	SetNames(names ...string)
+	SetValues(values ...interface{})
 }
 
 type updateQuery struct {
@@ -16,22 +16,19 @@ type updateQuery struct {
 	values  []Value
 }
 
-func (q updateQuery) Where(where BoolExpression) UpdateQuery {
+func (q *updateQuery) SetWhere(where BoolExpression) {
 	q.where = where
-	return q
 }
 
-func (q updateQuery) Names(names ...string) UpdateQuery {
+func (q *updateQuery) SetNames(names ...string) {
 	q.names = names
-	return q
 }
 
-func (q updateQuery) Values(values ...interface{}) UpdateQuery {
+func (q *updateQuery) SetValues(values ...interface{}) {
 	q.values = nil
 	for _, val := range values {
 		q.values = append(q.values, wrapValue(val))
 	}
-	return q
 }
 
 func (q updateQuery) Build() (string, []interface{}) {

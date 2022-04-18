@@ -7,10 +7,10 @@ import (
 // SelectQuery represents SQL select query.
 type SelectQuery interface {
 	Query
-	Names(names ...string) SelectQuery
-	Where(where BoolExpression) SelectQuery
-	OrderBy(names ...interface{}) SelectQuery
-	Limit(limit int) SelectQuery
+	SetNames(names ...string)
+	SetWhere(where BoolExpression)
+	SetOrderBy(names ...interface{})
+	SetLimit(limit int)
 }
 
 type selectQuery struct {
@@ -22,27 +22,23 @@ type selectQuery struct {
 	limit   int
 }
 
-func (q selectQuery) Names(names ...string) SelectQuery {
+func (q *selectQuery) SetNames(names ...string) {
 	q.names = names
-	return q
 }
 
-func (q selectQuery) Where(where BoolExpression) SelectQuery {
+func (q *selectQuery) SetWhere(where BoolExpression) {
 	q.where = where
-	return q
 }
 
-func (q selectQuery) OrderBy(names ...interface{}) SelectQuery {
+func (q *selectQuery) SetOrderBy(names ...interface{}) {
 	q.orderBy = nil
 	for _, name := range names {
 		q.orderBy = append(q.orderBy, wrapOrderExpression(name))
 	}
-	return q
 }
 
-func (q selectQuery) Limit(limit int) SelectQuery {
+func (q *selectQuery) SetLimit(limit int) {
 	q.limit = limit
-	return q
 }
 
 func (q selectQuery) Build() (string, []interface{}) {
