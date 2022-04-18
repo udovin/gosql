@@ -17,7 +17,7 @@ func (q deleteQuery) Where(where BoolExpression) DeleteQuery {
 	return q
 }
 
-func (q deleteQuery) Build() (string, []interface{}) {
+func (q deleteQuery) Build() (string, []any) {
 	state := rawBuilder{builder: q.builder}
 	state.WriteString("DELETE")
 	q.buildFrom(&state)

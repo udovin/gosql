@@ -5,7 +5,7 @@ type UpdateQuery interface {
 	Query
 	SetWhere(where BoolExpression)
 	SetNames(names ...string)
-	SetValues(values ...interface{})
+	SetValues(values ...any)
 }
 
 type updateQuery struct {
@@ -24,14 +24,14 @@ func (q *updateQuery) SetNames(names ...string) {
 	q.names = names
 }
 
-func (q *updateQuery) SetValues(values ...interface{}) {
+func (q *updateQuery) SetValues(values ...any) {
 	q.values = nil
 	for _, val := range values {
 		q.values = append(q.values, wrapValue(val))
 	}
 }
 
-func (q updateQuery) Build() (string, []interface{}) {
+func (q updateQuery) Build() (string, []any) {
 	builder := rawBuilder{builder: q.builder}
 	builder.WriteString("UPDATE ")
 	builder.WriteString(q.builder.buildName(q.table))

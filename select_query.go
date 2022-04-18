@@ -9,7 +9,7 @@ type SelectQuery interface {
 	Query
 	SetNames(names ...string)
 	SetWhere(where BoolExpression)
-	SetOrderBy(names ...interface{})
+	SetOrderBy(names ...any)
 	SetLimit(limit int)
 }
 
@@ -30,7 +30,7 @@ func (q *selectQuery) SetWhere(where BoolExpression) {
 	q.where = where
 }
 
-func (q *selectQuery) SetOrderBy(names ...interface{}) {
+func (q *selectQuery) SetOrderBy(names ...any) {
 	q.orderBy = nil
 	for _, name := range names {
 		q.orderBy = append(q.orderBy, wrapOrderExpression(name))
@@ -41,7 +41,7 @@ func (q *selectQuery) SetLimit(limit int) {
 	q.limit = limit
 }
 
-func (q selectQuery) Build() (string, []interface{}) {
+func (q selectQuery) Build() (string, []any) {
 	builder := rawBuilder{builder: q.builder}
 	builder.WriteString("SELECT ")
 	q.buildNames(&builder)

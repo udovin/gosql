@@ -9,16 +9,16 @@ import (
 type Runner interface {
 	// ExecContext executes a query that doesn't return rows.
 	ExecContext(
-		ctx context.Context, query string, args ...interface{},
+		ctx context.Context, query string, args ...any,
 	) (sql.Result, error)
 	// QueryContext executes a query that returns rows, typically a SELECT.
 	QueryContext(
-		ctx context.Context, query string, args ...interface{},
+		ctx context.Context, query string, args ...any,
 	) (*sql.Rows, error)
 	// QueryRowContext executes a query that is expected to return at
 	// most one row.
 	QueryRowContext(
-		ctx context.Context, query string, args ...interface{},
+		ctx context.Context, query string, args ...any,
 	) *sql.Row
 }
 

@@ -22,7 +22,7 @@ type Builder interface {
 // Query represents SQL query.
 type Query interface {
 	// Build generates SQL query and values.
-	Build() (string, []interface{})
+	Build() (string, []any)
 	// String returns SQL query without values.
 	String() string
 }
@@ -79,15 +79,15 @@ type RawBuilder interface {
 	WriteRune(rune)
 	WriteString(string)
 	WriteName(string)
-	WriteValue(interface{})
+	WriteValue(any)
 	String() string
-	Values() []interface{}
+	Values() []any
 }
 
 type rawBuilder struct {
 	builder *builder
 	query   strings.Builder
-	values  []interface{}
+	values  []any
 }
 
 func (s *rawBuilder) WriteRune(r rune) {
@@ -102,7 +102,7 @@ func (s *rawBuilder) WriteName(name string) {
 	s.query.WriteString(s.builder.buildName(name))
 }
 
-func (s *rawBuilder) WriteValue(value interface{}) {
+func (s *rawBuilder) WriteValue(value any) {
 	s.values = append(s.values, value)
 	s.query.WriteString(s.builder.buildOpt(len(s.values)))
 }
@@ -111,7 +111,7 @@ func (s rawBuilder) String() string {
 	return s.query.String()
 }
 
-func (s rawBuilder) Values() []interface{} {
+func (s rawBuilder) Values() []any {
 	return s.values
 }
 
@@ -173,44 +173,44 @@ func (e binaryExpr) Build(builder RawBuilder) {
 // Value represents comparable value.
 type Value interface {
 	Expression
-	Equal(interface{}) BoolExpression
-	NotEqual(interface{}) BoolExpression
-	Less(interface{}) BoolExpression
-	Greater(interface{}) BoolExpression
-	LessEqual(interface{}) BoolExpression
-	GreaterEqual(interface{}) BoolExpression
+	Equal(any) BoolExpression
+	NotEqual(any) BoolExpression
+	Less(any) BoolExpression
+	Greater(any) BoolExpression
+	LessEqual(any) BoolExpression
+	GreaterEqual(any) BoolExpression
 }
 
 // Column represents comparable table column.
 type Column string
 
 // Equal build boolean expression: "column = value".
-func (c Column) Equal(o interface{}) BoolExpression {
+func (c Column) Equal(o any) BoolExpression {
 	return cmp{kind: eqCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 // NotEqual build boolean expression: "column <> value".
-func (c Column) NotEqual(o interface{}) BoolExpression {
+func (c Column) NotEqual(o any) BoolExpression {
 	return cmp{kind: notEqCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 // Less build boolean expression: "column < value".
-func (c Column) Less(o interface{}) BoolExpression {
+func (c Column) Less(o any) BoolExpression {
 	return cmp{kind: lessCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 // Greater build boolean expression: "column > value".
-func (c Column) Greater(o interface{}) BoolExpression {
+func (c Column) Greater(o any) BoolExpression {
 	return cmp{kind: greaterCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 // LessEqual build boolean expression: "column <= value".
-func (c Column) LessEqual(o interface{}) BoolExpression {
+func (c Column) LessEqual(o any) BoolExpression {
 	return cmp{kind: lessEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
 // GreaterEqual build boolean expression: "column >= value".
-func (c Column) GreaterEqual(o interface{}) BoolExpression {
+func (c Column) GreaterEqual(o any) BoolExpression {
 	return cmp{kind: greaterEqualCmp, lhs: c, rhs: wrapValue(o)}
 }
 
@@ -219,30 +219,30 @@ func (c Column) Build(builder RawBuilder) {
 }
 
 type value struct {
-	value interface{}
+	value any
 }
 
-func (v value) Equal(o interface{}) BoolExpression {
+func (v value) Equal(o any) BoolExpression {
 	return cmp{kind: eqCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) NotEqual(o interface{}) BoolExpression {
+func (v value) NotEqual(o any) BoolExpression {
 	return cmp{kind: notEqCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) Less(o interface{}) BoolExpression {
+func (v value) Less(o any) BoolExpression {
 	return cmp{kind: lessCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) Greater(o interface{}) BoolExpression {
+func (v value) Greater(o any) BoolExpression {
 	return cmp{kind: greaterCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) LessEqual(o interface{}) BoolExpression {
+func (v value) LessEqual(o any) BoolExpression {
 	return cmp{kind: lessEqualCmp, lhs: v, rhs: wrapValue(o)}
 }
 
-func (v value) GreaterEqual(o interface{}) BoolExpression {
+func (v value) GreaterEqual(o any) BoolExpression {
 	return cmp{kind: greaterEqualCmp, lhs: v, rhs: wrapValue(o)}
 }
 
@@ -291,7 +291,7 @@ func (e order) Build(builder RawBuilder) {
 }
 
 // Ascending represents ascending order of sorting.
-func Ascending(val interface{}) OrderExpression {
+func Ascending(val any) OrderExpression {
 	switch v := val.(type) {
 	case OrderExpression:
 		return order{kind: AscendingOrder, expr: v.Expression()}
@@ -301,7 +301,7 @@ func Ascending(val interface{}) OrderExpression {
 }
 
 // Descending represents descending order of sorting.
-func Descending(val interface{}) OrderExpression {
+func Descending(val any) OrderExpression {
 	switch v := val.(type) {
 	case OrderExpression:
 		return order{kind: DescendingOrder, expr: v.Expression()}
@@ -368,14 +368,14 @@ func isNullValue(val Value) bool {
 	return ok && v.value == nil
 }
 
-func wrapValue(val interface{}) Value {
+func wrapValue(val any) Value {
 	if v, ok := val.(Value); ok {
 		return v
 	}
 	return value{value: val}
 }
 
-func wrapExpression(val interface{}) Expression {
+func wrapExpression(val any) Expression {
 	switch v := val.(type) {
 	case Expression:
 		return v
@@ -386,7 +386,7 @@ func wrapExpression(val interface{}) Expression {
 	}
 }
 
-func wrapOrderExpression(val interface{}) OrderExpression {
+func wrapOrderExpression(val any) OrderExpression {
 	switch v := val.(type) {
 	case OrderExpression:
 		return v

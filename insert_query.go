@@ -4,7 +4,7 @@ package gosql
 type InsertQuery interface {
 	Query
 	SetNames(name ...string)
-	SetValues(values ...interface{})
+	SetValues(values ...any)
 }
 
 type insertQuery struct {
@@ -18,14 +18,14 @@ func (q *insertQuery) SetNames(names ...string) {
 	q.names = names
 }
 
-func (q *insertQuery) SetValues(values ...interface{}) {
+func (q *insertQuery) SetValues(values ...any) {
 	q.values = nil
 	for _, val := range values {
 		q.values = append(q.values, wrapValue(val))
 	}
 }
 
-func (q insertQuery) Build() (string, []interface{}) {
+func (q insertQuery) Build() (string, []any) {
 	state := rawBuilder{builder: q.builder}
 	state.WriteString("INSERT INTO ")
 	state.WriteString(q.builder.buildName(q.table))

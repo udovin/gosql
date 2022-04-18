@@ -24,10 +24,10 @@ func testSetWhere[T testSetWhereImpl](query T, where BoolExpression) T {
 }
 
 type testSetOrderByImpl interface {
-	SetOrderBy(names ...interface{})
+	SetOrderBy(names ...any)
 }
 
-func testSetOrderBy[T testSetOrderByImpl](query T, names ...interface{}) T {
+func testSetOrderBy[T testSetOrderByImpl](query T, names ...any) T {
 	query.SetOrderBy(names...)
 	return query
 }
@@ -42,10 +42,10 @@ func testSetLimit[T testSetLimitImpl](query T, limit int) T {
 }
 
 type testSetValuesImpl interface {
-	SetValues(values ...interface{})
+	SetValues(values ...any)
 }
 
-func testSetValues[T testSetValuesImpl](query T, values ...interface{}) T {
+func testSetValues[T testSetValuesImpl](query T, values ...any) T {
 	query.SetValues(values...)
 	return query
 }
@@ -104,7 +104,7 @@ func TestUpdateQuery(t *testing.T) {
 	b := NewBuilder(SQLiteDialect)
 	q1 := testSetValues(testSetNames(testSetWhere(b.Update("t1"), Column("c1").Equal(123)), "c2", "c3"), "test", "test2")
 	s1 := `UPDATE "t1" SET "c2" = $1, "c3" = $2 WHERE "c1" = $3`
-	v1 := []interface{}{"test", "test2", 123}
+	v1 := []any{"test", "test2", 123}
 	if s, v := q1.Build(); s != s1 || !reflect.DeepEqual(v, v1) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
@@ -113,7 +113,7 @@ func TestUpdateQuery(t *testing.T) {
 	}
 	q2 := testSetValues(testSetNames(b.Update("t2"), "c1", "c2"), "test", "test2")
 	s2 := `UPDATE "t2" SET "c1" = $1, "c2" = $2 WHERE 1`
-	v2 := []interface{}{"test", "test2"}
+	v2 := []any{"test", "test2"}
 	if s, v := q2.Build(); s != s2 || !reflect.DeepEqual(v, v2) {
 		t.Fatalf("Expected %q got %q", s2, s)
 	}
@@ -144,7 +144,7 @@ func TestInsertQuery(t *testing.T) {
 	b := NewBuilder(SQLiteDialect)
 	q1 := testSetValues(testSetNames(b.Insert("t1"), "c2", "c3"), "test", "test2")
 	s1 := `INSERT INTO "t1" ("c2", "c3") VALUES ($1, $2)`
-	v1 := []interface{}{"test", "test2"}
+	v1 := []any{"test", "test2"}
 	if s, v := q1.Build(); s != s1 || !reflect.DeepEqual(v, v1) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
