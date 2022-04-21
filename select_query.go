@@ -72,7 +72,7 @@ func (q selectQuery) buildNames(builder *rawBuilder) {
 func (q selectQuery) buildWhere(builder *rawBuilder) {
 	builder.WriteString(" WHERE ")
 	if q.where == nil {
-		builder.WriteRune('1')
+		builder.WriteString("1 = 1")
 		return
 	}
 	q.where.Build(builder)

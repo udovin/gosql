@@ -61,7 +61,7 @@ func (q updateQuery) buildSet(builder *rawBuilder) {
 func (q updateQuery) buildWhere(builder *rawBuilder) {
 	builder.WriteString(" WHERE ")
 	if q.where == nil {
-		builder.WriteRune('1')
+		builder.WriteString("1 = 1")
 		return
 	}
 	q.where.Build(builder)
