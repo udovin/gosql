@@ -73,8 +73,8 @@ func TestSelectQuery(t *testing.T) {
 		testSetLimit(testSetOrderBy(b.Select("t1"), "c1"), 123),
 	}
 	outputs := []string{
-		`SELECT * FROM "t1" WHERE 1`,
-		`SELECT "c1", "c2", "c3" FROM "t1" WHERE 1`,
+		`SELECT * FROM "t1" WHERE 1 = 1`,
+		`SELECT "c1", "c2", "c3" FROM "t1" WHERE 1 = 1`,
 		`SELECT * FROM "t1" WHERE "c1" = $1`,
 		`SELECT * FROM "t1" WHERE "c1" <> $1`,
 		`SELECT * FROM "t1" WHERE "c2" IS NULL`,
@@ -85,12 +85,12 @@ func TestSelectQuery(t *testing.T) {
 		`SELECT * FROM "t1" WHERE "c3" >= $1`,
 		`SELECT * FROM "t1" WHERE "c1" > $1 AND "c1" <= $2`,
 		`SELECT * FROM "t1" WHERE "c1" > $1 OR "c1" <= $2`,
-		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" ASC, "c2" ASC`,
-		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" DESC, "c2" DESC, "c3" ASC`,
+		`SELECT * FROM "t1" WHERE 1 = 1 ORDER BY "c1" ASC, "c2" ASC`,
+		`SELECT * FROM "t1" WHERE 1 = 1 ORDER BY "c1" DESC, "c2" DESC, "c3" ASC`,
 		`SELECT * FROM "t1" WHERE ("c1" > $1 AND "c1" <= $2) OR "c1" < $3`,
 		`SELECT * FROM "t1" WHERE "c1" > $1 AND "c1" <= $2 AND "c1" < $3`,
 		`SELECT * FROM "t1" WHERE "c1" > $1 AND ("c1" <= $2 OR "c1" < $3)`,
-		`SELECT * FROM "t1" WHERE 1 ORDER BY "c1" ASC LIMIT 123`,
+		`SELECT * FROM "t1" WHERE 1 = 1 ORDER BY "c1" ASC LIMIT 123`,
 	}
 	for i, input := range inputs {
 		query := input.String()
@@ -112,7 +112,7 @@ func TestUpdateQuery(t *testing.T) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
 	q2 := testSetValues(testSetNames(b.Update("t2"), "c1", "c2"), "test", "test2")
-	s2 := `UPDATE "t2" SET "c1" = $1, "c2" = $2 WHERE 1`
+	s2 := `UPDATE "t2" SET "c1" = $1, "c2" = $2 WHERE 1 = 1`
 	v2 := []any{"test", "test2"}
 	if s, v := q2.Build(); s != s2 || !reflect.DeepEqual(v, v2) {
 		t.Fatalf("Expected %q got %q", s2, s)
@@ -134,7 +134,7 @@ func TestDeleteQuery(t *testing.T) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
 	q2 := b.Delete("t2")
-	s2 := `DELETE FROM "t2" WHERE 1`
+	s2 := `DELETE FROM "t2" WHERE 1 = 1`
 	if s := q2.String(); s != s2 {
 		t.Fatalf("Expected %q got %q", s2, s)
 	}
