@@ -3,7 +3,7 @@ package gosql
 // DeleteQuery represents SQL delete query.
 type DeleteQuery interface {
 	Query
-	Where(where BoolExpression) DeleteQuery
+	SetWhere(where BoolExpression)
 }
 
 type deleteQuery struct {
@@ -12,9 +12,8 @@ type deleteQuery struct {
 	where   BoolExpression
 }
 
-func (q deleteQuery) Where(where BoolExpression) DeleteQuery {
+func (q *deleteQuery) SetWhere(where BoolExpression) {
 	q.where = where
-	return q
 }
 
 func (q deleteQuery) Build() (string, []any) {

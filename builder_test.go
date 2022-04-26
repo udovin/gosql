@@ -127,8 +127,7 @@ func TestUpdateQuery(t *testing.T) {
 
 func TestDeleteQuery(t *testing.T) {
 	b := NewBuilder(SQLiteDialect)
-	q1 := b.Delete("t1").
-		Where(Column("c1").Equal(123))
+	q1 := testSetWhere(b.Delete("t1"), Column("c1").Equal(123))
 	s1 := `DELETE FROM "t1" WHERE "c1" = $1`
 	if s := q1.String(); s != s1 {
 		t.Fatalf("Expected %q got %q", s1, s)
