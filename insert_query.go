@@ -26,11 +26,11 @@ func (q *insertQuery) SetValues(values ...any) {
 }
 
 func (q insertQuery) Build() (string, []any) {
-	state := rawBuilder{builder: q.builder}
-	state.WriteString("INSERT INTO ")
-	state.WriteString(q.builder.buildName(q.table))
-	q.buildInsert(&state)
-	return state.String(), state.Values()
+	builder := rawBuilder{builder: q.builder}
+	builder.WriteString("INSERT INTO ")
+	builder.WriteString(q.builder.buildName(q.table))
+	q.buildInsert(&builder)
+	return builder.String(), builder.Values()
 }
 
 func (q insertQuery) buildInsert(builder *rawBuilder) {
@@ -58,6 +58,41 @@ func (q insertQuery) buildInsert(builder *rawBuilder) {
 }
 
 func (q insertQuery) String() string {
+	query, _ := q.Build()
+	return query
+}
+
+type PostgresInsertQuery struct {
+	insertQuery
+	returning []string
+}
+
+func (q *PostgresInsertQuery) SetReturning(names ...string) {
+	q.returning = names
+}
+
+func (q PostgresInsertQuery) buildReturning(builder *rawBuilder) {
+	if len(q.returning) > 0 {
+		builder.WriteString(" RETURNING ")
+		for i, name := range q.returning {
+			if i > 0 {
+				builder.WriteString(", ")
+			}
+			builder.WriteName(name)
+		}
+	}
+}
+
+func (q PostgresInsertQuery) Build() (string, []any) {
+	builder := rawBuilder{builder: q.builder}
+	builder.WriteString("INSERT INTO ")
+	builder.WriteString(q.builder.buildName(q.table))
+	q.buildInsert(&builder)
+	q.buildReturning(&builder)
+	return builder.String(), builder.Values()
+}
+
+func (q PostgresInsertQuery) String() string {
 	query, _ := q.Build()
 	return query
 }

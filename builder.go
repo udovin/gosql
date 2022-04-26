@@ -63,7 +63,14 @@ func (b *builder) Delete(table string) DeleteQuery {
 }
 
 func (b *builder) Insert(table string) InsertQuery {
-	return &insertQuery{builder: b, table: table}
+	switch b.dialect {
+	case PostgresDialect:
+		return &PostgresInsertQuery{
+			insertQuery: insertQuery{builder: b, table: table},
+		}
+	default:
+		return &insertQuery{builder: b, table: table}
+	}
 }
 
 func (b builder) buildName(name string) string {
