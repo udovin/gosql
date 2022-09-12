@@ -33,6 +33,7 @@ func (c SQLiteConfig) newDB() (*sql.DB, error) {
 	if c.Mode == "memory" || c.Path == ":memory:" {
 		params.Set("cache", "shared")
 	}
+	params.Set("_foreign_keys", "on")
 	return sql.Open("sqlite3", fmt.Sprintf(
 		"file:%s?%s", c.Path, params.Encode(),
 	))
