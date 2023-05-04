@@ -4,4 +4,4 @@
 
 # GoSQL
 
-GoSQL is licensed under Apache-2.0.
+GoSQL is distributed under the terms of both the MIT license and the Apache 2.0 License.
