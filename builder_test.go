@@ -15,10 +15,10 @@ func testSetNames[T testSetNamesImpl](query T, names ...string) T {
 }
 
 type testSetWhereImpl interface {
-	SetWhere(where BoolExpression)
+	SetWhere(where BoolExpr)
 }
 
-func testSetWhere[T testSetWhereImpl](query T, where BoolExpression) T {
+func testSetWhere[T testSetWhereImpl](query T, where BoolExpr) T {
 	query.SetWhere(where)
 	return query
 }
@@ -93,7 +93,7 @@ func TestSelectQuery(t *testing.T) {
 		`SELECT * FROM "t1" WHERE 1 = 1 ORDER BY "c1" ASC LIMIT 123`,
 	}
 	for i, input := range inputs {
-		query := input.String()
+		query := b.BuildString(input)
 		if query != outputs[i] {
 			t.Errorf("Expected %q, got %q", outputs[i], query)
 		}
@@ -105,23 +105,23 @@ func TestUpdateQuery(t *testing.T) {
 	q1 := testSetValues(testSetNames(testSetWhere(b.Update("t1"), Column("c1").Equal(123)), "c2", "c3"), "test", "test2")
 	s1 := `UPDATE "t1" SET "c2" = $1, "c3" = $2 WHERE "c1" = $3`
 	v1 := []any{"test", "test2", 123}
-	if s, v := q1.Build(); s != s1 || !reflect.DeepEqual(v, v1) {
+	if s, v := b.Build(q1); s != s1 || !reflect.DeepEqual(v, v1) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
-	if s := q1.String(); s != s1 {
+	if s := b.BuildString(q1); s != s1 {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
 	q2 := testSetValues(testSetNames(b.Update("t2"), "c1", "c2"), "test", "test2")
 	s2 := `UPDATE "t2" SET "c1" = $1, "c2" = $2 WHERE 1 = 1`
 	v2 := []any{"test", "test2"}
-	if s, v := q2.Build(); s != s2 || !reflect.DeepEqual(v, v2) {
+	if s, v := b.Build(q2); s != s2 || !reflect.DeepEqual(v, v2) {
 		t.Fatalf("Expected %q got %q", s2, s)
 	}
 	testExpectPanic(t, func() {
-		testSetValues(testSetNames(b.Update("t1"), "c2", "c3"), "test").Build()
+		b.Build(testSetValues(testSetNames(b.Update("t1"), "c2", "c3"), "test"))
 	})
 	testExpectPanic(t, func() {
-		b.Update("t1").Build()
+		b.Build(b.Update("t1"))
 	})
 }
 
@@ -129,12 +129,12 @@ func TestDeleteQuery(t *testing.T) {
 	b := NewBuilder(SQLiteDialect)
 	q1 := testSetWhere(b.Delete("t1"), Column("c1").Equal(123))
 	s1 := `DELETE FROM "t1" WHERE "c1" = $1`
-	if s := q1.String(); s != s1 {
+	if s := b.BuildString(q1); s != s1 {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
 	q2 := b.Delete("t2")
 	s2 := `DELETE FROM "t2" WHERE 1 = 1`
-	if s := q2.String(); s != s2 {
+	if s := b.BuildString(q2); s != s2 {
 		t.Fatalf("Expected %q got %q", s2, s)
 	}
 }
@@ -144,17 +144,17 @@ func TestInsertQuery(t *testing.T) {
 	q1 := testSetValues(testSetNames(b.Insert("t1"), "c2", "c3"), "test", "test2")
 	s1 := `INSERT INTO "t1" ("c2", "c3") VALUES ($1, $2)`
 	v1 := []any{"test", "test2"}
-	if s, v := q1.Build(); s != s1 || !reflect.DeepEqual(v, v1) {
+	if s, v := b.Build(q1); s != s1 || !reflect.DeepEqual(v, v1) {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
-	if s := q1.String(); s != s1 {
+	if s := b.BuildString(q1); s != s1 {
 		t.Fatalf("Expected %q got %q", s1, s)
 	}
 	testExpectPanic(t, func() {
-		testSetValues(testSetNames(b.Insert("t1"), "c2", "c3"), "test").Build()
+		b.Build(testSetValues(testSetNames(b.Insert("t1"), "c2", "c3"), "test"))
 	})
 	testExpectPanic(t, func() {
-		b.Insert("t1").Build()
+		b.Build(b.Insert("t1"))
 	})
 }
 

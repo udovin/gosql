@@ -3,20 +3,24 @@ package gosql
 // UpdateQuery represents SQL update query.
 type UpdateQuery interface {
 	Query
-	SetWhere(where BoolExpression)
+	SetTable(table string)
+	SetWhere(where BoolExpr)
 	SetNames(names ...string)
 	SetValues(values ...any)
 }
 
 type updateQuery struct {
-	builder *builder
-	table   string
-	where   BoolExpression
-	names   []string
-	values  []Value
+	table  string
+	where  BoolExpr
+	names  []string
+	values []Value
 }
 
-func (q *updateQuery) SetWhere(where BoolExpression) {
+func (q *updateQuery) SetTable(table string) {
+	q.table = table
+}
+
+func (q *updateQuery) SetWhere(where BoolExpr) {
 	q.where = where
 }
 
@@ -31,43 +35,36 @@ func (q *updateQuery) SetValues(values ...any) {
 	}
 }
 
-func (q updateQuery) Build() (string, []any) {
-	builder := rawBuilder{builder: q.builder}
-	builder.WriteString("UPDATE ")
-	builder.WriteString(q.builder.buildName(q.table))
-	q.buildSet(&builder)
-	q.buildWhere(&builder)
-	return builder.String(), builder.Values()
+func (q updateQuery) WriteQuery(w Writer) {
+	w.WriteString("UPDATE ")
+	w.WriteName(q.table)
+	q.writeSet(w)
+	q.writeWhere(w)
 }
 
-func (q updateQuery) buildSet(builder *rawBuilder) {
+func (q updateQuery) writeSet(w Writer) {
 	if len(q.names) == 0 {
 		panic("list of names can not be empty")
 	}
 	if len(q.names) != len(q.values) {
 		panic("amount of names and values differs")
 	}
-	builder.WriteString(" SET ")
+	w.WriteString(" SET ")
 	for i := range q.names {
 		if i > 0 {
-			builder.WriteString(", ")
+			w.WriteString(", ")
 		}
-		builder.WriteName(q.names[i])
-		builder.WriteString(" = ")
-		q.values[i].Build(builder)
+		w.WriteName(q.names[i])
+		w.WriteString(" = ")
+		q.values[i].WriteExpr(w)
 	}
 }
 
-func (q updateQuery) buildWhere(builder *rawBuilder) {
-	builder.WriteString(" WHERE ")
+func (q updateQuery) writeWhere(w Writer) {
+	w.WriteString(" WHERE ")
 	if q.where == nil {
-		builder.WriteString("1 = 1")
+		w.WriteString("1 = 1")
 		return
 	}
-	q.where.Build(builder)
-}
-
-func (q updateQuery) String() string {
-	query, _ := q.Build()
-	return query
+	q.where.WriteExpr(w)
 }

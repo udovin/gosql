@@ -3,15 +3,19 @@ package gosql
 // InsertQuery represents SQL insert query.
 type InsertQuery interface {
 	Query
+	SetTable(table string)
 	SetNames(name ...string)
 	SetValues(values ...any)
 }
 
 type insertQuery struct {
-	builder *builder
-	table   string
-	names   []string
-	values  []Value
+	table  string
+	names  []string
+	values []Value
+}
+
+func (q *insertQuery) SetTable(table string) {
+	q.table = table
 }
 
 func (q *insertQuery) SetNames(names ...string) {
@@ -25,41 +29,34 @@ func (q *insertQuery) SetValues(values ...any) {
 	}
 }
 
-func (q insertQuery) Build() (string, []any) {
-	builder := rawBuilder{builder: q.builder}
-	builder.WriteString("INSERT INTO ")
-	builder.WriteString(q.builder.buildName(q.table))
-	q.buildInsert(&builder)
-	return builder.String(), builder.Values()
+func (q insertQuery) WriteQuery(w Writer) {
+	w.WriteString("INSERT INTO ")
+	w.WriteName(q.table)
+	q.writeInsert(w)
 }
 
-func (q insertQuery) buildInsert(builder *rawBuilder) {
+func (q insertQuery) writeInsert(w Writer) {
 	if len(q.names) == 0 {
 		panic("list of names can not be empty")
 	}
 	if len(q.names) != len(q.values) {
 		panic("amount of names and values differs")
 	}
-	builder.WriteString(" (")
+	w.WriteString(" (")
 	for i, name := range q.names {
 		if i > 0 {
-			builder.WriteString(", ")
+			w.WriteString(", ")
 		}
-		builder.WriteName(name)
+		w.WriteName(name)
 	}
-	builder.WriteString(") VALUES (")
+	w.WriteString(") VALUES (")
 	for i, value := range q.values {
 		if i > 0 {
-			builder.WriteString(", ")
+			w.WriteString(", ")
 		}
-		value.Build(builder)
+		value.WriteExpr(w)
 	}
-	builder.WriteRune(')')
-}
-
-func (q insertQuery) String() string {
-	query, _ := q.Build()
-	return query
+	w.WriteRune(')')
 }
 
 type PostgresInsertQuery struct {
@@ -71,28 +68,19 @@ func (q *PostgresInsertQuery) SetReturning(names ...string) {
 	q.returning = names
 }
 
-func (q PostgresInsertQuery) buildReturning(builder *rawBuilder) {
+func (q PostgresInsertQuery) WriteQuery(w Writer) {
+	q.insertQuery.WriteQuery(w)
+	q.writeReturning(w)
+}
+
+func (q PostgresInsertQuery) writeReturning(w Writer) {
 	if len(q.returning) > 0 {
-		builder.WriteString(" RETURNING ")
+		w.WriteString(" RETURNING ")
 		for i, name := range q.returning {
 			if i > 0 {
-				builder.WriteString(", ")
+				w.WriteString(", ")
 			}
-			builder.WriteName(name)
+			w.WriteName(name)
 		}
 	}
-}
-
-func (q PostgresInsertQuery) Build() (string, []any) {
-	builder := rawBuilder{builder: q.builder}
-	builder.WriteString("INSERT INTO ")
-	builder.WriteString(q.builder.buildName(q.table))
-	q.buildInsert(&builder)
-	q.buildReturning(&builder)
-	return builder.String(), builder.Values()
-}
-
-func (q PostgresInsertQuery) String() string {
-	query, _ := q.Build()
-	return query
 }

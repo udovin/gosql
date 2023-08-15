@@ -3,42 +3,34 @@ package gosql
 // DeleteQuery represents SQL delete query.
 type DeleteQuery interface {
 	Query
-	SetWhere(where BoolExpression)
+	SetTable(table string)
+	SetWhere(where BoolExpr)
 }
 
 type deleteQuery struct {
-	builder *builder
-	table   string
-	where   BoolExpression
+	table string
+	where BoolExpr
 }
 
-func (q *deleteQuery) SetWhere(where BoolExpression) {
+func (q *deleteQuery) SetTable(table string) {
+	q.table = table
+}
+
+func (q *deleteQuery) SetWhere(where BoolExpr) {
 	q.where = where
 }
 
-func (q deleteQuery) Build() (string, []any) {
-	state := rawBuilder{builder: q.builder}
-	state.WriteString("DELETE")
-	q.buildFrom(&state)
-	q.buildWhere(&state)
-	return state.String(), state.Values()
+func (q deleteQuery) WriteQuery(w Writer) {
+	w.WriteString("DELETE FROM ")
+	w.WriteName(q.table)
+	q.writeWhere(w)
 }
 
-func (q deleteQuery) buildFrom(builder *rawBuilder) {
-	builder.WriteString(" FROM ")
-	builder.WriteName(q.table)
-}
-
-func (q deleteQuery) buildWhere(builder *rawBuilder) {
-	builder.WriteString(" WHERE ")
+func (q deleteQuery) writeWhere(w Writer) {
+	w.WriteString(" WHERE ")
 	if q.where == nil {
-		builder.WriteString("1 = 1")
+		w.WriteString("1 = 1")
 		return
 	}
-	q.where.Build(builder)
-}
-
-func (q deleteQuery) String() string {
-	query, _ := q.Build()
-	return query
+	q.where.WriteExpr(w)
 }

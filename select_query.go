@@ -7,26 +7,30 @@ import (
 // SelectQuery represents SQL select query.
 type SelectQuery interface {
 	Query
+	SetTable(table string)
 	SetNames(names ...string)
-	SetWhere(where BoolExpression)
+	SetWhere(where BoolExpr)
 	SetOrderBy(names ...any)
 	SetLimit(limit int)
 }
 
 type selectQuery struct {
-	builder *builder
 	table   string
 	names   []string
-	where   BoolExpression
-	orderBy []OrderExpression
+	where   BoolExpr
+	orderBy []OrderExpr
 	limit   int
+}
+
+func (q *selectQuery) SetTable(table string) {
+	q.table = table
 }
 
 func (q *selectQuery) SetNames(names ...string) {
 	q.names = names
 }
 
-func (q *selectQuery) SetWhere(where BoolExpression) {
+func (q *selectQuery) SetWhere(where BoolExpr) {
 	q.where = where
 }
 
@@ -41,57 +45,50 @@ func (q *selectQuery) SetLimit(limit int) {
 	q.limit = limit
 }
 
-func (q selectQuery) Build() (string, []any) {
-	builder := rawBuilder{builder: q.builder}
-	builder.WriteString("SELECT ")
-	q.buildNames(&builder)
-	builder.WriteString(" FROM ")
-	builder.WriteString(q.builder.buildName(q.table))
-	q.buildWhere(&builder)
-	q.buildOrderBy(&builder)
+func (q selectQuery) WriteQuery(w Writer) {
+	w.WriteString("SELECT ")
+	q.writeNames(w)
+	w.WriteString(" FROM ")
+	w.WriteName(q.table)
+	q.writeWhere(w)
+	q.writeOrderBy(w)
 	if q.limit > 0 {
-		builder.WriteString(" LIMIT ")
-		builder.WriteString(strconv.Itoa(q.limit))
+		w.WriteString(" LIMIT ")
+		w.WriteString(strconv.Itoa(q.limit))
 	}
-	return builder.String(), builder.Values()
 }
 
-func (q selectQuery) buildNames(builder *rawBuilder) {
+func (q selectQuery) writeNames(w Writer) {
 	if len(q.names) == 0 {
-		builder.WriteRune('*')
+		w.WriteRune('*')
 		return
 	}
 	for i, name := range q.names {
 		if i > 0 {
-			builder.WriteString(", ")
+			w.WriteString(", ")
 		}
-		builder.WriteName(name)
+		w.WriteName(name)
 	}
 }
 
-func (q selectQuery) buildWhere(builder *rawBuilder) {
-	builder.WriteString(" WHERE ")
+func (q selectQuery) writeWhere(w Writer) {
+	w.WriteString(" WHERE ")
 	if q.where == nil {
-		builder.WriteString("1 = 1")
+		w.WriteString("1 = 1")
 		return
 	}
-	q.where.Build(builder)
+	q.where.WriteExpr(w)
 }
 
-func (q selectQuery) buildOrderBy(builder *rawBuilder) {
+func (q selectQuery) writeOrderBy(w Writer) {
 	if len(q.orderBy) == 0 {
 		return
 	}
-	builder.WriteString(" ORDER BY ")
+	w.WriteString(" ORDER BY ")
 	for i, name := range q.orderBy {
 		if i > 0 {
-			builder.WriteString(", ")
+			w.WriteString(", ")
 		}
-		name.Build(builder)
+		name.WriteExpr(w)
 	}
-}
-
-func (q selectQuery) String() string {
-	query, _ := q.Build()
-	return query
 }
