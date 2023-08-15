@@ -7,7 +7,6 @@ import (
 // SelectQuery represents SQL select query.
 type SelectQuery interface {
 	Query
-	SetTable(table string)
 	SetNames(names ...string)
 	SetWhere(where BoolExpr)
 	SetOrderBy(names ...any)
@@ -20,10 +19,6 @@ type selectQuery struct {
 	where   BoolExpr
 	orderBy []OrderExpr
 	limit   int
-}
-
-func (q *selectQuery) SetTable(table string) {
-	q.table = table
 }
 
 func (q *selectQuery) SetNames(names ...string) {

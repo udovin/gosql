@@ -3,17 +3,12 @@ package gosql
 // DeleteQuery represents SQL delete query.
 type DeleteQuery interface {
 	Query
-	SetTable(table string)
 	SetWhere(where BoolExpr)
 }
 
 type deleteQuery struct {
 	table string
 	where BoolExpr
-}
-
-func (q *deleteQuery) SetTable(table string) {
-	q.table = table
 }
 
 func (q *deleteQuery) SetWhere(where BoolExpr) {

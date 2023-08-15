@@ -3,7 +3,6 @@ package gosql
 // InsertQuery represents SQL insert query.
 type InsertQuery interface {
 	Query
-	SetTable(table string)
 	SetNames(name ...string)
 	SetValues(values ...any)
 }
@@ -12,10 +11,6 @@ type insertQuery struct {
 	table  string
 	names  []string
 	values []Value
-}
-
-func (q *insertQuery) SetTable(table string) {
-	q.table = table
 }
 
 func (q *insertQuery) SetNames(names ...string) {

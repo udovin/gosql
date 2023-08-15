@@ -3,7 +3,6 @@ package gosql
 // UpdateQuery represents SQL update query.
 type UpdateQuery interface {
 	Query
-	SetTable(table string)
 	SetWhere(where BoolExpr)
 	SetNames(names ...string)
 	SetValues(values ...any)
@@ -14,10 +13,6 @@ type updateQuery struct {
 	where  BoolExpr
 	names  []string
 	values []Value
-}
-
-func (q *updateQuery) SetTable(table string) {
-	q.table = table
 }
 
 func (q *updateQuery) SetWhere(where BoolExpr) {
