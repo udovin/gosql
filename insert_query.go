@@ -1,5 +1,9 @@
 package gosql
 
+import (
+	"fmt"
+)
+
 // InsertQuery represents SQL insert query.
 type InsertQuery interface {
 	Query
@@ -64,6 +68,16 @@ func (q *PostgresInsertQuery) SetReturning(names ...string) {
 }
 
 func (q PostgresInsertQuery) WriteQuery(w Writer) {
+	wr, ok := w.(*writer)
+	if !ok {
+		panic(fmt.Errorf("required postgres writer"))
+	}
+	if wr.builder.dialect != PostgresDialect {
+		panic(fmt.Errorf(
+			"required postgres writer but got %q",
+			wr.builder.dialect,
+		))
+	}
 	q.insertQuery.WriteQuery(w)
 	q.writeReturning(w)
 }

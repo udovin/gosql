@@ -158,6 +158,24 @@ func TestInsertQuery(t *testing.T) {
 	})
 }
 
+func TestPostgresInsertQuery(t *testing.T) {
+	b := NewBuilder(PostgresDialect)
+	q1 := testSetValues(testSetNames(b.Insert("t1"), "c2", "c3"), "test", "test2")
+	q1.(*PostgresInsertQuery).SetReturning("id")
+	s1 := `INSERT INTO "t1" ("c2", "c3") VALUES ($1, $2) RETURNING "id"`
+	v1 := []any{"test", "test2"}
+	if s, v := b.Build(q1); s != s1 || !reflect.DeepEqual(v, v1) {
+		t.Fatalf("Expected %q got %q", s1, s)
+	}
+	if s := b.BuildString(q1); s != s1 {
+		t.Fatalf("Expected %q got %q", s1, s)
+	}
+	testExpectPanic(t, func() {
+		b2 := NewBuilder(SQLiteDialect)
+		b2.Build(q1)
+	})
+}
+
 func testExpectPanic(tb testing.TB, fn func()) {
 	defer func() {
 		if r := recover(); r == nil {
